@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply min-h-dvh bg-neutral-950 text-neutral-100 antialiased;
+}
+
+/* Calendario (react-day-picker) con la marca */
+.rdp-root {
+  --rdp-accent-color: rgb(var(--brand));
+  --rdp-accent-background-color: rgb(var(--brand) / 0.15);
+  --rdp-day-width: 2.6rem;
+  --rdp-day-height: 2.6rem;
+  --rdp-day_button-width: 2.4rem;
+  --rdp-day_button-height: 2.4rem;
+}
+.rdp-root .rdp-selected .rdp-day_button {
+  background: rgb(var(--brand));
+  color: white;
+}
