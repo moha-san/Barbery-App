@@ -1,6 +1,6 @@
-// Service Worker mínimo: permite instalar la PWA y abrir la app sin conexión.
+// Service Worker mínimo: permite instalar la PWA, abrir la app sin conexión y recibir avisos.
 // Las reservas y la disponibilidad siempre van a la red (nunca se cachean).
-const VERSION = 'v1'
+const VERSION = 'v2'
 const STATIC_CACHE = `static-${VERSION}`
 const PAGES_CACHE = `pages-${VERSION}`
 const PRECACHE = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']
@@ -23,7 +23,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return // Server Actions (POST) y escrituras: directo a la red
   const url = new URL(request.url)
-  if (url.origin !== self.location.origin) return // Supabase, Resend, etc.
+  if (url.origin !== self.location.origin) return // Supabase, etc.
   if (url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/login')) return
 
   // Ficheros con hash de Next e iconos: cache-first (nunca cambian de contenido).
@@ -54,4 +54,36 @@ self.addEventListener('fetch', (event) => {
         .catch(() => caches.match(request).then((hit) => hit || caches.match('/'))),
     )
   }
+})
+
+// Avisos al móvil: reservas nuevas (personal) y recordatorios (clientes). Ver lib/push.ts.
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = { body: event.data ? event.data.text() : '' }
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Aviso', {
+      body: data.body || '',
+      tag: data.tag,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: data.url || '/' },
+    }),
+  )
+})
+
+// Al tocar el aviso: abre la app (o la trae al frente) en la página del aviso.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = new URL(event.notification.data?.url || '/', self.location.origin).href
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+      const win = wins.find((w) => w.url.startsWith(self.location.origin))
+      if (win) return win.navigate(url).then((w) => (w || win).focus())
+      return self.clients.openWindow(url)
+    }),
+  )
 })

@@ -5,7 +5,7 @@ PWA de reservas para **una** barbería (single-tenant, llave en mano). Next.js 1
 ## Puesta en marcha
 
 1. Crea un proyecto en Supabase.
-2. `cp .env.example .env.local` y rellena las claves (Supabase, Resend, email del dueño).
+2. `cp .env.example .env.local` y rellena las claves (Supabase, claves de avisos con `npx web-push generate-vapid-keys`, `CRON_SECRET`).
 3. `npm install`
 4. Tablas: `npx supabase login`, `npx supabase link --project-ref <ref>` y `npx supabase db push`.
 5. Datos de prueba: `npm run seed` (admin, barbero, 4 servicios, 3 citas y una prueba anti-solapes).
@@ -29,7 +29,10 @@ config/site.ts                 Marca y horario del local
 supabase/migrations/          Tablas, restricción anti-solapes, RLS, función book_appointment
 types/database.ts              Tipos de la BD (formato supabase gen types)
 actions/appointments.ts        getAvailableSlots, bookAppointment, updateAppointmentStatus
-actions/notifications.ts       sendImmediateAlert (email al dueño con Resend)
+actions/notifications.ts       Aviso al móvil del dueño por reserva y recordatorio del día antes
+actions/push.ts                Guardar el móvil que acepta avisos (personal o cliente)
+lib/push.ts, lib/push-client.ts  Envío de avisos (web-push) y permiso en el navegador
+app/api/cron/recordatorios/    Recordatorios diarios (Vercel Cron, vercel.json)
 actions/auth.ts                Login / logout del equipo
 lib/slots.ts (+ .test.ts)      Cálculo de huecos libres
 lib/whatsapp.ts                generateWhatsAppReminderLink
@@ -41,6 +44,13 @@ app/dashboard/page.tsx         Agenda del día (tiempo real)
 app/login/page.tsx             Acceso del equipo
 app/manifest.ts, public/sw.js  PWA instalable
 ```
+
+## Avisos al móvil
+
+- **Dueño y barberos:** en el panel tocan *Activar avisos*. Cada reserva nueva les llega al móvil.
+- **Clientes:** tras reservar tocan *Avisarme el día antes*. Vercel Cron llama a `/api/cron/recordatorios` cada día a las 17:00 UTC y avisa de las citas de mañana (una vez por cita).
+- **iPhone:** solo funciona con la app añadida a la pantalla de inicio (iOS 16.4 o más). La app lo explica si no está instalada.
+- Variables: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`. Sin ellas la app funciona, pero no manda avisos.
 
 ## Cómo se evitan las dobles reservas
 

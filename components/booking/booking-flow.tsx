@@ -13,6 +13,7 @@ import { BarberPicker } from './barber-picker'
 import { DatePicker } from './date-picker'
 import { SlotGrid } from './slot-grid'
 import { ConfirmDialog } from './confirm-dialog'
+import { PushButton } from '@/components/push-button'
 
 type Props = { barbers: Barber[]; services: Service[] }
 
@@ -46,7 +47,7 @@ export function BookingFlow({ barbers, services }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [slot, setSlot] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [booked, setBooked] = useState<string | null>(null)
+  const [booked, setBooked] = useState<{ start: string; id: string } | null>(null)
 
   const barberRef = useRef<HTMLElement>(null)
   const dayRef = useRef<HTMLElement>(null)
@@ -73,7 +74,7 @@ export function BookingFlow({ barbers, services }: Props) {
   }, [loadSlots])
 
   if (booked && service && barber) {
-    return <BookedScreen start={booked} service={service} barber={barber} onAgain={() => { setBooked(null); setSlot(null); void loadSlots() }} />
+    return <BookedScreen start={booked.start} appointmentId={booked.id} service={service} barber={barber} onAgain={() => { setBooked(null); setSlot(null); void loadSlots() }} />
   }
 
   if (!barbers.length || !services.length) {
@@ -185,9 +186,9 @@ export function BookingFlow({ barbers, services }: Props) {
           barber={barber}
           service={service}
           startTime={slot}
-          onBooked={() => {
+          onBooked={(id) => {
             setDialogOpen(false)
-            setBooked(slot)
+            setBooked({ start: slot, id })
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
           onSlotTaken={() => void loadSlots()}
@@ -197,7 +198,7 @@ export function BookingFlow({ barbers, services }: Props) {
   )
 }
 
-function BookedScreen({ start, service, barber, onAgain }: { start: string; service: Service; barber: Barber; onAgain: () => void }) {
+function BookedScreen({ start, appointmentId, service, barber, onAgain }: { start: string; appointmentId: string; service: Service; barber: Barber; onAgain: () => void }) {
   const event: CalendarEvent = {
     title: `${service.nombre} en ${siteConfig.name}`,
     start,
@@ -232,6 +233,9 @@ function BookedScreen({ start, service, barber, onAgain }: { start: string; serv
         <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer" className="btn-ghost h-12">
           Google Calendar
         </a>
+      </div>
+      <div className="relative">
+        <PushButton kind="client" appointmentId={appointmentId} label="Avisarme el día antes" doneLabel="Te avisaremos el día antes" className="btn-ghost h-12 w-full" />
       </div>
       <p className="relative text-sm text-muted">
         ¿Necesitas cambiarla?{' '}

@@ -9,6 +9,7 @@ import { logout } from '@/actions/auth'
 import { AppointmentCard } from '@/components/dashboard/appointment-card'
 import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh'
 import { BrandMark } from '@/components/brand-mark'
+import { PushButton } from '@/components/push-button'
 import { ArrowLeftIcon, ArrowRightIcon, CalendarIcon, LogOutIcon } from '@/components/icons'
 import type { AppointmentWithRelations } from '@/types/database'
 
@@ -72,6 +73,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       <header className="flex items-center gap-3 border-b border-border pb-4">
         <BrandMark size={40} />
         <p className="font-display min-w-0 flex-1 truncate text-lg">{siteConfig.name}</p>
+        <PushButton kind="staff" label="Activar avisos" doneLabel="Avisos activados" className="btn-ghost h-11 px-3" />
         <form action={logout}>
           <button className="btn-ghost h-11 px-3" aria-label="Salir">
             <LogOutIcon /> <span className="hidden sm:inline">Salir</span>

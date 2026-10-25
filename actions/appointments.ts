@@ -124,7 +124,7 @@ export async function bookAppointment(input: BookingInput): Promise<ActionResult
     return { ok: false, error: 'No se pudo guardar la reserva' }
   }
 
-  // 3) Aviso al dueño. Un fallo de email no deshace una reserva ya guardada.
+  // 3) Aviso al móvil del dueño. Si falla, la reserva ya guardada sigue valiendo.
   try {
     const { data: appointment } = await supabase
       .from('appointments')
@@ -133,7 +133,7 @@ export async function bookAppointment(input: BookingInput): Promise<ActionResult
       .single()
     if (appointment) await sendImmediateAlert(appointment as AppointmentWithRelations)
   } catch (e) {
-    console.error('[bookAppointment] email', e)
+    console.error('[bookAppointment] aviso', e)
   }
 
   revalidatePath('/dashboard')

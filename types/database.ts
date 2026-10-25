@@ -98,6 +98,7 @@ export type Database = {
           start_time: string
           end_time: string
           status: AppointmentStatus
+          recordatorio_enviado: boolean
           created_at: string
         }
         Insert: {
@@ -108,6 +109,7 @@ export type Database = {
           start_time: string
           end_time: string
           status?: AppointmentStatus
+          recordatorio_enviado?: boolean
           created_at?: string
         }
         Update: {
@@ -118,6 +120,7 @@ export type Database = {
           start_time?: string
           end_time?: string
           status?: AppointmentStatus
+          recordatorio_enviado?: boolean
           created_at?: string
         }
         Relationships: [
@@ -140,6 +143,41 @@ export type Database = {
             columns: ['service_id']
             isOneToOne: false
             referencedRelation: 'services'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'push_subscriptions_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
             referencedColumns: ['id']
           },
         ]

@@ -14,7 +14,7 @@ type Props = {
   barber: Barber
   service: Service
   startTime: string
-  onBooked: () => void
+  onBooked: (appointmentId: string) => void
   onSlotTaken: () => void
 }
 
@@ -43,7 +43,7 @@ export function ConfirmDialog({ open, onOpenChange, barber, service, startTime, 
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify({ nombre, telefono }))
         } catch {}
-        return onBooked()
+        return onBooked(result.data.id)
       }
       setError(result.error)
       if (/ocupad|disponible/i.test(result.error)) onSlotTaken()
