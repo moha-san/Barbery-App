@@ -4,10 +4,12 @@ PWA de reservas para **una** barbería (single-tenant, llave en mano). Next.js 1
 
 ## Puesta en marcha
 
-1. Crea un proyecto en Supabase y ejecuta `supabase/schema.sql` en el SQL Editor.
-2. Crea el usuario del dueño en *Authentication > Users* y dale rol con el `insert` comentado al final del SQL.
-3. `cp .env.example .env.local` y rellena las claves (Supabase, Resend, email del dueño).
-4. `npm install && npm run dev`
+1. Crea un proyecto en Supabase.
+2. `cp .env.example .env.local` y rellena las claves (Supabase, Resend, email del dueño).
+3. `npm install`
+4. Tablas: `npx supabase login`, `npx supabase link --project-ref <ref>` y `npx supabase db push`.
+5. Datos de prueba: `npm run seed` (admin, barbero, 4 servicios, 3 citas y una prueba anti-solapes).
+6. `npm run dev`
 
 ## Rebrandear para un cliente
 
@@ -17,13 +19,14 @@ Solo se toca `config/site.ts` (nombre, logo, color, teléfono, WhatsApp, horario
 
 ```
 config/site.ts                 Marca y horario del local
-supabase/schema.sql            Tablas, restricción anti-solapes, RLS, función book_appointment
+supabase/migrations/          Tablas, restricción anti-solapes, RLS, función book_appointment
 types/database.ts              Tipos de la BD (formato supabase gen types)
 actions/appointments.ts        getAvailableSlots, bookAppointment, updateAppointmentStatus
 actions/notifications.ts       sendImmediateAlert (email al dueño con Resend)
 actions/auth.ts                Login / logout del equipo
 lib/slots.ts (+ .test.ts)      Cálculo de huecos libres
 lib/whatsapp.ts                generateWhatsAppReminderLink
+scripts/seed.ts                Datos de prueba (npm run seed)
 lib/supabase/                  Clientes de Supabase (servidor, admin, navegador)
 app/page.tsx                   Flujo de reserva público
 app/dashboard/page.tsx         Agenda del día (tiempo real)

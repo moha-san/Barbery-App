@@ -1,4 +1,4 @@
-// Mismo formato que `npx supabase gen types typescript`. Regenerar si cambia supabase/schema.sql.
+// Mismo formato que `npx supabase gen types typescript`. Regenerar si cambia supabase/migrations/.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 

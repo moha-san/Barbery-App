@@ -1,4 +1,4 @@
--- Esquema completo de la barbería (single-tenant). Ejecutar una vez en Supabase > SQL Editor.
+-- Esquema completo de la barbería (single-tenant). Se aplica con `npx supabase db push`.
 -- Todas las horas se guardan en timestamptz (UTC). La zona del local vive en config/site.ts.
 
 create extension if not exists btree_gist;
@@ -148,16 +148,7 @@ create policy "appointments: personal actualiza" on public.appointments
 -- ─── Realtime para el dashboard ───────────────────────────────────────────
 alter publication supabase_realtime add table public.appointments;
 
--- ─── Datos de ejemplo (borrar en producción) ──────────────────────────────
-insert into public.barbers (nombre, avatar_url, especialidad) values
-  ('Carlos', null, 'Degradados'),
-  ('Lucía', null, 'Barba y afeitado clásico');
-
-insert into public.services (nombre, duracion_min, precio) values
-  ('Corte', 30, 15),
-  ('Corte + barba', 45, 22),
-  ('Arreglo de barba', 20, 10);
-
+-- ─── Datos de prueba: npm run seed (scripts/seed.ts) ─────────────────────
 -- Alta del personal: crea el usuario en Authentication > Users y luego:
 -- insert into public.users (id, rol, nombre, telefono, email)
 -- values ('<uuid de auth.users>', 'admin', 'Dueño', '+34600000000', 'dueno@barberia.com');
