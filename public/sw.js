@@ -3,7 +3,7 @@
 const VERSION = 'v2'
 const STATIC_CACHE = `static-${VERSION}`
 const PAGES_CACHE = `pages-${VERSION}`
-const PRECACHE = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']
+const PRECACHE = ['/', '/manifest.webmanifest', '/brand-icon/192', '/brand-icon/512']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(PAGES_CACHE).then((cache) => cache.addAll(PRECACHE)))
@@ -68,8 +68,8 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(data.title || 'Aviso', {
       body: data.body || '',
       tag: data.tag,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
+      icon: '/brand-icon/192',
+      badge: '/brand-icon/192',
       data: { url: data.url || '/' },
     }),
   )

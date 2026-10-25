@@ -157,9 +157,9 @@ export function BookingFlow({ barbers, services }: Props) {
       )}
 
       {service && (
-        <div className="fixed inset-x-0 bottom-0 z-30 animate-sheet-up border-t border-border bg-background/90 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-soft backdrop-blur-xl">
-          <div className="mx-auto flex max-w-6xl items-center gap-4 lg:justify-end lg:px-8">
-            <div className="min-w-0 flex-1 lg:max-w-xs">
+        <div className="fixed inset-x-0 bottom-0 z-30 animate-sheet-up border-t border-border bg-background/90 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-soft backdrop-blur-xl lg:sticky lg:bottom-6 lg:rounded-card lg:border lg:bg-surface/90 lg:p-4 lg:pl-5">
+          <div className="mx-auto flex max-w-6xl items-center gap-4">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">
                 {service.nombre}
                 {barber ? ` · ${barber.nombre}` : ''}

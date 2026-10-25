@@ -16,9 +16,10 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: siteConfig.theme.colors.background,
     background_color: siteConfig.theme.colors.background,
     icons: [
-      { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-      { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-      { src: '/icons/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      // Generados con las iniciales y colores del tema (app/brand-icon)
+      { src: '/brand-icon/192', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: '/brand-icon/512', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      { src: '/brand-icon/512', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   }
 }
