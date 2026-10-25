@@ -15,8 +15,8 @@ export function BarberPicker({ barbers, selectedId, onSelect }: Props) {
             role="radio"
             aria-checked={selected}
             onClick={() => onSelect(b)}
-            className={`flex flex-col items-center gap-2 rounded-xl border p-4 text-center transition ${
-              selected ? 'border-brand bg-brand/15' : 'border-white/10 hover:border-white/25'
+            className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition ${
+              selected ? 'border-brand bg-brand/15 ring-1 ring-brand' : 'border-white/10 bg-white/[0.03] hover:border-white/25'
             }`}
           >
             {b.avatar_url ? (

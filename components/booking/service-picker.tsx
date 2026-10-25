@@ -1,5 +1,6 @@
 import type { Service } from '@/types/database'
 import { formatPrice } from '@/lib/format'
+import { ClockIcon } from '@/components/icons'
 
 type Props = { services: Service[]; selectedId: string | null; onSelect: (s: Service) => void }
 
@@ -15,15 +16,17 @@ export function ServicePicker({ services, selectedId, onSelect }: Props) {
             role="radio"
             aria-checked={selected}
             onClick={() => onSelect(s)}
-            className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
-              selected ? 'border-brand bg-brand/15' : 'border-white/10 hover:border-white/25'
+            className={`flex items-center justify-between rounded-2xl border px-4 py-4 text-left transition ${
+              selected ? 'border-brand bg-brand/15 ring-1 ring-brand' : 'border-white/10 bg-white/[0.03] hover:border-white/25'
             }`}
           >
             <span>
               <span className="block font-medium">{s.nombre}</span>
-              <span className="text-xs text-neutral-400">{s.duracion_min} min</span>
+              <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-neutral-400">
+                <ClockIcon /> {s.duracion_min} min
+              </span>
             </span>
-            <span className="font-semibold">{formatPrice(s.precio)}</span>
+            <span className="text-lg font-semibold tabular-nums">{formatPrice(s.precio)}</span>
           </button>
         )
       })}
