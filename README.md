@@ -26,6 +26,7 @@ actions/notifications.ts       sendImmediateAlert (email al dueño con Resend)
 actions/auth.ts                Login / logout del equipo
 lib/slots.ts (+ .test.ts)      Cálculo de huecos libres
 lib/whatsapp.ts                generateWhatsAppReminderLink
+lib/calendar.ts (+ .test.ts)   Archivo .ics y enlace de Google Calendar de la cita
 scripts/seed.ts                Datos de prueba (npm run seed)
 lib/supabase/                  Clientes de Supabase (servidor, admin, navegador)
 app/page.tsx                   Flujo de reserva público

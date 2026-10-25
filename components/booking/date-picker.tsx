@@ -1,32 +1,52 @@
 'use client'
 
-import { DayPicker } from 'react-day-picker'
-import { es } from 'react-day-picker/locale'
-import { addDays, startOfDay } from 'date-fns'
-import 'react-day-picker/style.css'
+import { useMemo } from 'react'
+import { addDays, format } from 'date-fns'
+import { es } from 'date-fns/locale'
 import { siteConfig, type Weekday } from '@/config/site'
+import { toLocal } from '@/lib/format'
 
-type Props = { selected: Date | undefined; onSelect: (d: Date | undefined) => void }
+type Props = { selected: string | null; onSelect: (dateKey: string) => void }
 
-const closedWeekdays = (Object.keys(siteConfig.businessHours) as unknown as Weekday[])
-  .map(Number)
-  .filter((d) => siteConfig.businessHours[d as Weekday].length === 0)
-
+// Tira de días en la zona horaria del local (no la del móvil).
 export function DatePicker({ selected, onSelect }: Props) {
-  const today = startOfDay(new Date())
-  const last = addDays(today, siteConfig.bookingWindowDays)
+  const days = useMemo(() => {
+    const today = toLocal(new Date())
+    return Array.from({ length: siteConfig.bookingWindowDays + 1 }, (_, i) => {
+      const d = addDays(today, i)
+      return {
+        key: format(d, 'yyyy-MM-dd'),
+        top: i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : format(d, 'EEE', { locale: es }),
+        day: format(d, 'd'),
+        month: format(d, 'MMM', { locale: es }),
+        closed: siteConfig.businessHours[d.getDay() as Weekday].length === 0,
+      }
+    })
+  }, [])
+
   return (
-    <div className="flex justify-center rounded-xl border border-white/10 p-2">
-      <DayPicker
-        mode="single"
-        locale={es}
-        weekStartsOn={1}
-        selected={selected}
-        onSelect={onSelect}
-        startMonth={today}
-        endMonth={last}
-        disabled={[{ before: today }, { after: last }, { dayOfWeek: closedWeekdays }]}
-      />
+    <div role="radiogroup" aria-label="Día" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none]">
+      {days.map((d) => {
+        const isSelected = d.key === selected
+        return (
+          <button
+            key={d.key}
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            aria-label={`${d.top} ${d.day} ${d.month}${d.closed ? ', cerrado' : ''}`}
+            disabled={d.closed}
+            onClick={() => onSelect(d.key)}
+            className={`flex w-16 shrink-0 flex-col items-center rounded-2xl border py-3 transition disabled:cursor-not-allowed disabled:opacity-30 ${
+              isSelected ? 'border-brand bg-brand text-white shadow-lg shadow-brand/30' : 'border-white/10 bg-white/[0.03] hover:border-white/25'
+            }`}
+          >
+            <span className={`text-[11px] font-medium first-letter:uppercase ${isSelected ? 'text-white/90' : 'text-neutral-400'}`}>{d.top}</span>
+            <span className="text-xl font-semibold tabular-nums">{d.day}</span>
+            <span className={`text-[11px] first-letter:uppercase ${isSelected ? 'text-white/90' : 'text-neutral-500'}`}>{d.closed ? 'Cerrado' : d.month}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }
