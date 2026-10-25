@@ -4,7 +4,7 @@ import { addDays } from 'date-fns'
 import { TZDate } from '@date-fns/tz'
 import { siteConfig } from '@/config/site'
 import { createSessionClient } from '@/lib/supabase/server'
-import { formatDateLong, localDateKey } from '@/lib/format'
+import { formatDateLong, formatPrice, formatTime, localDateKey } from '@/lib/format'
 import { logout } from '@/actions/auth'
 import { AppointmentCard } from '@/components/dashboard/appointment-card'
 import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh'
@@ -15,7 +15,7 @@ import type { AppointmentWithRelations } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 
-type Props = { searchParams: { fecha?: string } }
+type Props = { searchParams: { fecha?: string; barbero?: string } }
 
 export default async function DashboardPage({ searchParams }: Props) {
   const supabase = createSessionClient()
@@ -47,16 +47,34 @@ export default async function DashboardPage({ searchParams }: Props) {
   const dayStart = new TZDate(y, m - 1, d, 0, 0, siteConfig.timezone)
   const dayEnd = addDays(dayStart, 1)
 
-  const { data, error } = await supabase
+  const { data: barbersData } = await supabase.from('barbers').select('id, nombre').eq('activo', true).order('nombre')
+  const barbers = barbersData ?? []
+  const barbero = barbers.find((b) => b.id === searchParams.barbero)?.id
+  // Enlace que conserva el día y el barbero elegidos.
+  const href = (f: string | undefined, b: string | undefined) => {
+    const q = new URLSearchParams()
+    if (f) q.set('fecha', f)
+    if (b) q.set('barbero', b)
+    const qs = q.toString()
+    return qs ? `/dashboard?${qs}` : '/dashboard'
+  }
+
+  let query = supabase
     .from('appointments')
     .select('*, barber:barbers(id, nombre), client:users(id, nombre, telefono), service:services(id, nombre, duracion_min, precio)')
     .gte('start_time', dayStart.toISOString())
     .lt('start_time', dayEnd.toISOString())
     .neq('status', 'cancelada')
     .order('start_time')
+  if (barbero) query = query.eq('barber_id', barbero)
+  const { data, error } = await query
   const appointments = (data ?? []) as AppointmentWithRelations[]
   const pendientes = appointments.filter((a) => a.status === 'confirmada').length
   const hechas = appointments.filter((a) => a.status === 'completada').length
+  // Caja: lo cobrado (citas completadas) y lo que falta por cobrar (confirmadas).
+  const precio = (a: AppointmentWithRelations) => a.service?.precio ?? 0
+  const cobrado = appointments.filter((a) => a.status === 'completada').reduce((sum, a) => sum + precio(a), 0)
+  const porCobrar = appointments.filter((a) => a.status === 'confirmada').reduce((sum, a) => sum + precio(a), 0)
 
   // Destaca la cita en curso o, si no hay, la siguiente (solo viendo hoy).
   const now = Date.now()
@@ -66,6 +84,9 @@ export default async function DashboardPage({ searchParams }: Props) {
   const nextAppt = isToday && !nowAppt ? confirmed.find((a) => new Date(a.start_time).getTime() > now) : undefined
   const highlighted = nowAppt ?? nextAppt
   const navBtn = 'btn-ghost h-11 px-3'
+  const minsToNext = nextAppt ? Math.max(1, Math.round((new Date(nextAppt.start_time).getTime() - now) / 60000)) : 0
+  const chip = (active: boolean) =>
+    `btn h-10 shrink-0 rounded-full border px-4 ${active ? 'border-primary bg-primary text-on-primary' : 'border-border bg-surface text-text hover:border-text/30'}`
 
   return (
     <main className="mx-auto max-w-5xl px-4 pb-16 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8">
@@ -87,19 +108,32 @@ export default async function DashboardPage({ searchParams }: Props) {
           <h1 className="mt-2 text-3xl first-letter:uppercase sm:text-4xl">{formatDateLong(dayStart)}</h1>
         </div>
         <nav aria-label="Cambiar de día" className="flex gap-2">
-          <Link href={`/dashboard?fecha=${localDateKey(addDays(dayStart, -1))}`} className={navBtn} aria-label="Día anterior">
+          <Link href={href(localDateKey(addDays(dayStart, -1)), barbero)} className={navBtn} aria-label="Día anterior">
             <ArrowLeftIcon />
           </Link>
-          <Link href="/dashboard" className={`${navBtn} px-5 ${isToday ? 'border-primary text-primary' : ''}`}>
+          <Link href={href(undefined, barbero)} className={`${navBtn} px-5 ${isToday ? 'border-primary text-primary' : ''}`}>
             Hoy
           </Link>
-          <Link href={`/dashboard?fecha=${localDateKey(addDays(dayStart, 1))}`} className={navBtn} aria-label="Día siguiente">
+          <Link href={href(localDateKey(addDays(dayStart, 1)), barbero)} className={navBtn} aria-label="Día siguiente">
             <ArrowRightIcon />
           </Link>
         </nav>
       </section>
 
-      <dl className="mt-6 grid grid-cols-3 gap-3">
+      {barbers.length > 1 && (
+        <nav aria-label="Filtrar por barbero" className="-mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+          <Link href={href(isToday ? undefined : fecha, undefined)} className={chip(!barbero)} aria-current={!barbero ? 'true' : undefined}>
+            Todos
+          </Link>
+          {barbers.map((b) => (
+            <Link key={b.id} href={href(isToday ? undefined : fecha, b.id)} className={chip(b.id === barbero)} aria-current={b.id === barbero ? 'true' : undefined}>
+              {b.nombre}
+            </Link>
+          ))}
+        </nav>
+      )}
+
+      <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           ['Citas', appointments.length],
           ['Pendientes', pendientes],
@@ -110,7 +144,24 @@ export default async function DashboardPage({ searchParams }: Props) {
             <dd className="font-display mt-1 text-3xl tabular-nums">{value}</dd>
           </div>
         ))}
+        <div className="card border-success/40 p-4">
+          <dt className="text-xs font-medium uppercase tracking-wider text-muted">{isToday ? 'Caja de hoy' : 'Caja del día'}</dt>
+          <dd className="font-display mt-1 text-3xl tabular-nums text-success">{formatPrice(cobrado)}</dd>
+          {porCobrar > 0 && <dd className="mt-1 text-xs text-muted">+ {formatPrice(porCobrar)} por cobrar</dd>}
+        </div>
       </dl>
+
+      {highlighted && (
+        <p className="mt-6 flex flex-wrap items-baseline gap-x-2 rounded-card border border-primary/40 bg-primary/10 px-4 py-3 text-sm">
+          <span className="eyebrow text-primary">{nowAppt ? 'Ahora' : `Próxima en ${minsToNext < 60 ? `${minsToNext} min` : `${Math.floor(minsToNext / 60)} h ${minsToNext % 60} min`}`}</span>
+          <span className="font-semibold">
+            {formatTime(highlighted.start_time)} · {highlighted.client?.nombre ?? 'Cliente'}
+          </span>
+          <span className="text-muted">
+            {highlighted.service?.nombre} con {highlighted.barber?.nombre}
+          </span>
+        </p>
+      )}
 
       <section className="mt-8 grid gap-4 md:grid-cols-2">
         {error && (
