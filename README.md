@@ -13,7 +13,14 @@ PWA de reservas para **una** barbería (single-tenant, llave en mano). Next.js 1
 
 ## Rebrandear para un cliente
 
-Solo se toca `config/site.ts` (nombre, logo, color, teléfono, WhatsApp, horario, zona horaria) y los iconos de `public/icons/`.
+Solo se toca `config/site.ts`:
+
+1. Datos: `name`, `phone`, `whatsapp`, `address`, horario (`businessHours`).
+2. Estilo: cambia la línea `const preset = 'clasico'` por `'urbano'` o `'minimal'`.
+3. Estilo propio: copia un preset dentro de `themePresets`, cambia colores (hex), letras (`fonts`), redondez (`radius`), `logo`, `heroImage` y `tagline`, y elígelo en esa línea.
+4. Pon el logo y la portada del cliente en `public/brand/` y los iconos de la app en `public/icons/`.
+
+Los colores llegan a Tailwind como `bg-surface`, `text-muted`, `border-border`, `bg-primary`, `text-on-primary`… Nunca uses colores fijos en los componentes.
 
 ## Estructura
 

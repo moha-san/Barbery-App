@@ -5,7 +5,7 @@ type Props = { barbers: Barber[]; selectedId: string | null; onSelect: (b: Barbe
 
 export function BarberPicker({ barbers, selectedId, onSelect }: Props) {
   return (
-    <div role="radiogroup" aria-label="Barbero" className="grid grid-cols-2 gap-3">
+    <div role="radiogroup" aria-label="Barbero" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {barbers.map((b) => {
         const selected = b.id === selectedId
         return (
@@ -15,19 +15,23 @@ export function BarberPicker({ barbers, selectedId, onSelect }: Props) {
             role="radio"
             aria-checked={selected}
             onClick={() => onSelect(b)}
-            className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition ${
-              selected ? 'border-brand bg-brand/15 ring-1 ring-brand' : 'border-white/10 bg-white/[0.03] hover:border-white/25'
+            className={`flex flex-col items-center gap-3 rounded-card border p-5 text-center transition duration-200 ${
+              selected ? 'border-primary bg-primary/10 shadow-glow' : 'border-border bg-surface shadow-soft hover:-translate-y-0.5 hover:border-primary/40'
             }`}
           >
-            {b.avatar_url ? (
-              <img src={b.avatar_url} alt="" className="h-16 w-16 rounded-full object-cover" />
-            ) : (
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand/30 text-2xl font-semibold">
-                {b.nombre.charAt(0)}
-              </span>
-            )}
-            <span className="font-medium">{b.nombre}</span>
-            {b.especialidad && <span className="text-xs text-neutral-400">{b.especialidad}</span>}
+            <span className={`rounded-full p-1 transition duration-200 ${selected ? 'ring-2 ring-primary' : 'ring-1 ring-border'}`}>
+              {b.avatar_url ? (
+                <img src={b.avatar_url} alt="" className="h-16 w-16 rounded-full object-cover" />
+              ) : (
+                <span className="font-display grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-primary/30 to-accent/10 text-2xl text-text">
+                  {b.nombre.charAt(0)}
+                </span>
+              )}
+            </span>
+            <span>
+              <span className="block font-semibold">{b.nombre}</span>
+              {b.especialidad && <span className="mt-0.5 block text-xs text-muted">{b.especialidad}</span>}
+            </span>
           </button>
         )
       })}

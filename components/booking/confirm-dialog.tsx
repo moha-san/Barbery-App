@@ -53,25 +53,26 @@ export function ConfirmDialog({ open, onOpenChange, barber, service, startTime, 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/70" />
+        <Dialog.Overlay className="fixed inset-0 z-40 animate-fade-in bg-background/80 backdrop-blur-sm" />
         {/* En móvil sale desde abajo; en escritorio, centrado */}
-        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] overflow-y-auto rounded-t-3xl border border-white/10 bg-neutral-900 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl">
-          <Dialog.Title className="text-lg font-semibold">Confirmar cita</Dialog.Title>
-          <Dialog.Description className="mt-1 text-sm text-neutral-400">
+        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] animate-sheet-up overflow-y-auto rounded-t-[calc(var(--radius)+8px)] border border-border bg-surface p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-soft sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:animate-fade-in sm:rounded-card">
+          <span aria-hidden className="mx-auto mb-4 block h-1 w-10 rounded-full bg-text/15 sm:hidden" />
+          <Dialog.Title className="text-2xl">Confirma tu cita</Dialog.Title>
+          <Dialog.Description className="mt-1 text-sm text-muted">
             {service.nombre} con {barber.nombre}
           </Dialog.Description>
 
-          <dl className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-white/5 p-3 text-sm">
-            <dt className="text-neutral-400">Día</dt>
+          <dl className="mt-5 grid grid-cols-2 gap-x-2 gap-y-3 rounded-btn border border-border bg-background p-4 text-sm">
+            <dt className="text-muted">Día</dt>
             <dd className="text-right first-letter:uppercase">{formatDateLong(startTime)}</dd>
-            <dt className="text-neutral-400">Hora</dt>
+            <dt className="text-muted">Hora</dt>
             <dd className="text-right tabular-nums">{formatTime(startTime)}</dd>
-            <dt className="text-neutral-400">Precio</dt>
-            <dd className="text-right">{formatPrice(service.precio)}</dd>
+            <dt className="text-muted">Precio</dt>
+            <dd className="font-display text-right text-lg leading-none text-primary">{formatPrice(service.precio)}</dd>
           </dl>
 
-          <form onSubmit={handleSubmit} className="mt-4 grid gap-3">
-            <label className="grid gap-1 text-sm">
+          <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
+            <label className="grid gap-1.5 text-sm font-medium">
               Nombre
               <input
                 name="nombre"
@@ -81,10 +82,10 @@ export function ConfirmDialog({ open, onOpenChange, barber, service, startTime, 
                 minLength={2}
                 maxLength={100}
                 autoComplete="name"
-                className="rounded-lg border border-white/15 bg-neutral-950 h-12 px-3 text-base outline-none focus:border-brand"
+                className="field"
               />
             </label>
-            <label className="grid gap-1 text-sm">
+            <label className="grid gap-1.5 text-sm font-medium">
               Teléfono
               <input
                 name="telefono"
@@ -95,22 +96,22 @@ export function ConfirmDialog({ open, onOpenChange, barber, service, startTime, 
                 inputMode="tel"
                 autoComplete="tel"
                 placeholder="+34 600 000 000"
-                className="rounded-lg border border-white/15 bg-neutral-950 h-12 px-3 text-base outline-none focus:border-brand"
+                className="field"
               />
             </label>
 
             {error && (
-              <p role="alert" className="rounded-lg bg-red-500/10 p-3 text-sm text-red-300">
+              <p role="alert" className="rounded-btn border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
                 {error}
               </p>
             )}
 
             <div className="mt-1 grid grid-cols-2 gap-2">
-              <Dialog.Close className="h-12 rounded-xl border border-white/15 text-sm">Cancelar</Dialog.Close>
+              <Dialog.Close className="btn-ghost h-12">Cancelar</Dialog.Close>
               <button
                 type="submit"
                 disabled={pending}
-                className="h-12 rounded-xl bg-brand text-sm font-semibold text-white disabled:opacity-60"
+                className="btn-primary h-12 text-base"
               >
                 {pending ? 'Reservando…' : 'Reservar'}
               </button>

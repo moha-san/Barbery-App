@@ -1,20 +1,22 @@
 import type { Metadata, Viewport } from 'next'
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { siteConfig } from '@/config/site'
-import { hexToRgbChannels } from '@/lib/brand'
+import { themeVars } from '@/lib/brand'
 import { ServiceWorkerRegister } from '@/components/sw-register'
 import './globals.css'
+
+const { theme } = siteConfig
 
 export const metadata: Metadata = {
   title: siteConfig.name,
   description: siteConfig.description,
   applicationName: siteConfig.name,
-  appleWebApp: { capable: true, title: siteConfig.name, statusBarStyle: 'black-translucent' },
+  appleWebApp: { capable: true, title: siteConfig.name, statusBarStyle: theme.mode === 'dark' ? 'black-translucent' : 'default' },
   icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-192.png' },
 }
 
 export const viewport: Viewport = {
-  themeColor: siteConfig.theme_color,
+  themeColor: theme.colors.background,
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
@@ -22,7 +24,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="es" style={{ '--brand': hexToRgbChannels(siteConfig.theme_color) } as CSSProperties}>
+    <html lang="es" data-mode={theme.mode} style={themeVars(theme)}>
       <body>
         {children}
         <ServiceWorkerRegister />

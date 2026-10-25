@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b1d12"/>
+      <stop offset=".6" stop-color="#0d0d0f"/>
+      <stop offset="1" stop-color="#0a0a0b"/>
+    </linearGradient>
+    <pattern id="d" width="14" height="14" patternUnits="userSpaceOnUse">
+      <circle cx="7" cy="7" r="1.6" fill="#f7f7f8" fill-opacity=".09"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="1000" fill="url(#g)"/>
+  <rect width="800" height="1000" fill="url(#d)"/>
+  <g transform="rotate(-24 400 400)">
+    <rect x="-200" y="120" width="1400" height="70" fill="#d4ff3a" fill-opacity=".9"/>
+    <rect x="-200" y="215" width="1400" height="22" fill="#ff5a36" fill-opacity=".85"/>
+    <rect x="-200" y="262" width="1400" height="8" fill="#f7f7f8" fill-opacity=".5"/>
+    <rect x="-200" y="430" width="1400" height="2" fill="#d4ff3a" fill-opacity=".35"/>
+  </g>
+  <text x="790" y="560" text-anchor="end" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="230" fill="none" stroke="#f7f7f8" stroke-opacity=".12" stroke-width="2">FADE</text>
+</svg>
