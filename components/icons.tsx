@@ -30,3 +30,21 @@ export const CalendarIcon = (p: SVGProps<SVGSVGElement>) => (
 export const SettingsIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" /></Icon>
 )
+export const XIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M18 6 6 18M6 6l12 12" /></Icon>
+)
+export const ArrowLeftIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M19 12H5M12 19l-7-7 7-7" /></Icon>
+)
+export const ArrowRightIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M5 12h14M12 5l7 7-7 7" /></Icon>
+)
+export const NavigationIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="m3 11 19-9-9 19-2-8-8-2Z" /></Icon>
+)
+export const ScissorsIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12" /></Icon>
+)
+export const LogOutIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></Icon>
+)

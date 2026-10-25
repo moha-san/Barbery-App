@@ -25,7 +25,7 @@ export function DatePicker({ selected, onSelect }: Props) {
   }, [])
 
   return (
-    <div role="radiogroup" aria-label="Día" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none]">
+    <div role="radiogroup" aria-label="Día" className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:px-0">
       {days.map((d) => {
         const isSelected = d.key === selected
         return (
@@ -37,13 +37,13 @@ export function DatePicker({ selected, onSelect }: Props) {
             aria-label={`${d.top} ${d.day} ${d.month}${d.closed ? ', cerrado' : ''}`}
             disabled={d.closed}
             onClick={() => onSelect(d.key)}
-            className={`flex w-16 shrink-0 flex-col items-center rounded-2xl border py-3 transition disabled:cursor-not-allowed disabled:opacity-30 ${
-              isSelected ? 'border-brand bg-brand text-white shadow-lg shadow-brand/30' : 'border-white/10 bg-white/[0.03] hover:border-white/25'
+            className={`flex w-[4.5rem] shrink-0 snap-start flex-col items-center gap-0.5 rounded-card border py-3 transition duration-200 disabled:cursor-not-allowed disabled:opacity-35 ${
+              isSelected ? 'border-primary bg-primary text-on-primary shadow-glow' : 'border-border bg-surface hover:border-primary/40'
             }`}
           >
-            <span className={`text-[11px] font-medium first-letter:uppercase ${isSelected ? 'text-white/90' : 'text-neutral-400'}`}>{d.top}</span>
-            <span className="text-xl font-semibold tabular-nums">{d.day}</span>
-            <span className={`text-[11px] first-letter:uppercase ${isSelected ? 'text-white/90' : 'text-neutral-500'}`}>{d.closed ? 'Cerrado' : d.month}</span>
+            <span className={`text-xs font-medium first-letter:uppercase ${isSelected ? '' : 'text-muted'}`}>{d.top}</span>
+            <span className="font-display text-2xl tabular-nums leading-tight">{d.day}</span>
+            <span className={`text-xs first-letter:uppercase ${isSelected ? '' : 'text-muted'}`}>{d.closed ? 'Cerrado' : d.month}</span>
           </button>
         )
       })}

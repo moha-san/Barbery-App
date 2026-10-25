@@ -6,7 +6,7 @@ import { siteConfig } from '@/config/site'
 import { buildIcs, googleCalendarUrl, type CalendarEvent } from '@/lib/calendar'
 import { formatDateLong, formatPrice, formatTime } from '@/lib/format'
 import { shopWhatsAppLink } from '@/lib/whatsapp'
-import { CalendarIcon, CheckIcon } from '@/components/icons'
+import { CalendarIcon, ChatIcon, CheckIcon, ScissorsIcon } from '@/components/icons'
 import type { Barber, Service } from '@/types/database'
 import { ServicePicker } from './service-picker'
 import { BarberPicker } from './barber-picker'
@@ -20,9 +20,13 @@ const STEPS = ['Servicio', 'Barbero', 'Día', 'Hora']
 
 function Step({ n, title, done, innerRef, children }: { n: number; title: string; done: boolean; innerRef?: RefObject<HTMLElement>; children: ReactNode }) {
   return (
-    <section ref={innerRef} className="grid scroll-mt-24 gap-3">
-      <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-300">
-        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs text-white ${done ? 'bg-emerald-600' : 'bg-brand'}`}>
+    <section ref={innerRef} className="grid animate-fade-up scroll-mt-24 gap-4">
+      <h2 className="flex items-center gap-3 text-2xl">
+        <span
+          className={`font-body grid h-8 w-8 shrink-0 place-items-center rounded-full border text-sm font-semibold transition duration-200 ${
+            done ? 'border-primary bg-primary text-on-primary' : 'border-primary/60 text-primary'
+          }`}
+        >
           {done ? <CheckIcon /> : n}
         </span>
         {title}
@@ -48,7 +52,9 @@ export function BookingFlow({ barbers, services }: Props) {
   const dayRef = useRef<HTMLElement>(null)
   const hourRef = useRef<HTMLElement>(null)
   const scrollTo = (ref: RefObject<HTMLElement>) =>
-    requestAnimationFrame(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    requestAnimationFrame(() =>
+      ref.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }),
+    )
 
   const loadSlots = useCallback(async () => {
     if (!dateKey || !barber || !service) return
@@ -71,18 +77,29 @@ export function BookingFlow({ barbers, services }: Props) {
   }
 
   if (!barbers.length || !services.length) {
-    return <p className="text-neutral-400">Aún no hay servicios o barberos disponibles.</p>
+    return (
+      <div className="card grid justify-items-center gap-2 p-8 text-center">
+        <ScissorsIcon className="text-3xl text-primary" />
+        <p className="font-display text-xl">Estamos preparando la agenda</p>
+        <p className="text-sm text-muted">Muy pronto podrás reservar aquí. Mientras, escríbenos y te atendemos.</p>
+        <a href={shopWhatsAppLink('Hola, quería reservar una cita.')} target="_blank" rel="noopener noreferrer" className="btn-ghost mt-2">
+          <ChatIcon className="text-whatsapp" /> Escribir por WhatsApp
+        </a>
+      </div>
+    )
   }
 
   const current = !service ? 0 : !barber ? 1 : !dateKey ? 2 : 3
 
   return (
-    <div className="grid gap-10">
-      <ol className="grid grid-cols-4 gap-1.5" aria-label="Progreso">
+    <div className="grid gap-12">
+      <ol className="grid grid-cols-4 gap-2" aria-label="Progreso">
         {STEPS.map((label, i) => (
-          <li key={label} className="grid gap-1.5">
-            <span className={`h-1 rounded-full ${i <= current ? 'bg-brand' : 'bg-white/10'}`} />
-            <span className={`text-[11px] ${i === current ? 'text-white' : 'text-neutral-500'}`}>{label}</span>
+          <li key={label} className="grid gap-2" aria-current={i === current ? 'step' : undefined}>
+            <span className="h-1 overflow-hidden rounded-full bg-text/10">
+              <span className={`block h-full rounded-full bg-primary transition-all duration-200 ${i < current ? 'w-full' : i === current ? 'w-1/2' : 'w-0'}`} />
+            </span>
+            <span className={`text-xs font-medium ${i === current ? 'text-text' : i < current ? 'text-primary' : 'text-muted'}`}>{label}</span>
           </li>
         ))}
       </ol>
@@ -139,23 +156,24 @@ export function BookingFlow({ barbers, services }: Props) {
       )}
 
       {service && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-neutral-950/90 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
-          <div className="mx-auto flex max-w-xl items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">
+        <div className="fixed inset-x-0 bottom-0 z-30 animate-sheet-up border-t border-border bg-background/90 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-soft backdrop-blur-xl">
+          <div className="mx-auto flex max-w-6xl items-center gap-4 lg:justify-end lg:px-8">
+            <div className="min-w-0 flex-1 lg:max-w-xs">
+              <p className="truncate text-sm font-semibold">
                 {service.nombre}
                 {barber ? ` · ${barber.nombre}` : ''}
               </p>
-              <p className="truncate text-xs first-letter:uppercase text-neutral-400">
-                {slot ? `${formatDateLong(slot)} · ${formatTime(slot)}` : dateKey ? formatDateLong(`${dateKey}T12:00:00Z`) : `${service.duracion_min} min`}
+              <p className="truncate text-xs text-muted first-letter:uppercase">
+                {slot ? `${formatDateLong(slot)} · ${formatTime(slot)}` : dateKey ? `${formatDateLong(`${dateKey}T12:00:00Z`)} · elige hora` : `${service.duracion_min} min`}
               </p>
             </div>
-            <p className="text-lg font-semibold tabular-nums">{formatPrice(service.precio)}</p>
-            {slot && (
-              <button type="button" onClick={() => setDialogOpen(true)} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white">
-                Confirmar
-              </button>
-            )}
+            <div className="text-right">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted">Total</p>
+              <p className="font-display text-2xl leading-none tabular-nums">{formatPrice(service.precio)}</p>
+            </div>
+            <button type="button" disabled={!slot} onClick={() => setDialogOpen(true)} className="btn-primary h-12 px-6 text-base">
+              Reservar
+            </button>
           </div>
         </div>
       )}
@@ -190,34 +208,38 @@ function BookedScreen({ start, service, barber, onAgain }: { start: string; serv
   const icsHref = `data:text/calendar;charset=utf-8,${encodeURIComponent(buildIcs(event))}`
 
   return (
-    <div className="grid gap-5 rounded-3xl border border-brand/30 bg-gradient-to-b from-brand/15 to-transparent p-6 text-center">
-      <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-600 text-3xl text-white shadow-lg shadow-emerald-600/30">
-        <CheckIcon />
+    <div className="card relative grid animate-fade-up gap-6 overflow-hidden p-6 text-center sm:p-10">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/15 to-transparent" />
+      <span className="relative mx-auto grid h-20 w-20 animate-scale-in place-items-center rounded-full bg-primary text-on-primary shadow-glow">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M20 6 9 17l-5-5" strokeDasharray="24" className="animate-draw" />
+        </svg>
       </span>
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">¡Cita reservada!</h2>
-        <p className="mt-2 text-neutral-300">
+      <div className="relative">
+        <p className="eyebrow">Te esperamos</p>
+        <h2 className="mt-2 text-3xl sm:text-4xl">¡Cita reservada!</h2>
+        <p className="mt-3 text-muted">
           {service.nombre} con {barber.nombre}
         </p>
-        <p className="text-lg font-semibold first-letter:uppercase">
+        <p className="font-display mt-1 text-xl first-letter:uppercase">
           {formatDateLong(start)} · {formatTime(start)}
         </p>
       </div>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <a href={icsHref} download="cita.ics" className="inline-flex items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-semibold text-black">
+      <div className="relative grid gap-2 sm:grid-cols-2">
+        <a href={icsHref} download="cita.ics" className="btn-primary h-12">
           <CalendarIcon /> Añadir al calendario
         </a>
-        <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-white/15 py-3 text-sm font-medium">
+        <a href={googleCalendarUrl(event)} target="_blank" rel="noopener noreferrer" className="btn-ghost h-12">
           Google Calendar
         </a>
       </div>
-      <p className="text-sm text-neutral-400">
+      <p className="relative text-sm text-muted">
         ¿Necesitas cambiarla?{' '}
-        <a href={shopWhatsAppLink(`Hola, tengo cita el ${formatDateLong(start)} a las ${formatTime(start)} y necesito cambiarla.`)} target="_blank" rel="noopener noreferrer" className="font-medium text-white underline underline-offset-4">
+        <a href={shopWhatsAppLink(`Hola, tengo cita el ${formatDateLong(start)} a las ${formatTime(start)} y necesito cambiarla.`)} target="_blank" rel="noopener noreferrer" className="font-semibold text-text underline underline-offset-4">
           Escríbenos por WhatsApp
         </a>
       </p>
-      <button type="button" onClick={onAgain} className="mx-auto text-sm text-neutral-400 underline underline-offset-4">
+      <button type="button" onClick={onAgain} className="relative mx-auto min-h-11 text-sm text-muted underline underline-offset-4 hover:text-text">
         Hacer otra reserva
       </button>
     </div>
