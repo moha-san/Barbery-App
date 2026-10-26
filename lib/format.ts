@@ -23,3 +23,6 @@ export function whenLabel(iso: string): string {
   const prefix = key(day) === key(today) ? 'hoy' : key(day) === key(tomorrow) ? 'mañana' : formatDateLong(iso)
   return `${prefix} a las ${formatTime(iso)}`
 }
+
+// Precio de un servicio: 0 € significa "según el trabajo" (por ejemplo, el color).
+export const servicePrice = (precio: number) => (precio > 0 ? formatPrice(precio) : 'Variable')

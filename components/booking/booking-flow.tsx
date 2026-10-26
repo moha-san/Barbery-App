@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObjec
 import { cancelMyAppointment, getAvailableSlots } from '@/actions/appointments'
 import { siteConfig } from '@/config/site'
 import { buildIcs, googleCalendarUrl, type CalendarEvent } from '@/lib/calendar'
-import { formatDateLong, formatPrice, formatTime, whenLabel } from '@/lib/format'
+import { formatDateLong, formatTime, whenLabel, servicePrice } from '@/lib/format'
 import { shopWhatsAppLink } from '@/lib/whatsapp'
 import { CalendarIcon, ChatIcon, CheckIcon, ScissorsIcon } from '@/components/icons'
 import type { Barber, Service } from '@/types/database'
@@ -228,7 +228,7 @@ export function BookingFlow({ barbers, services, hours, nextFree }: Props) {
             </div>
             <div className="text-right">
               <p className="text-[11px] font-medium uppercase tracking-wider text-muted">Total</p>
-              <p className="font-display text-2xl leading-none tabular-nums">{formatPrice(service.precio)}</p>
+              <p className="font-display text-2xl leading-none tabular-nums">{servicePrice(service.precio)}</p>
             </div>
             <button type="button" disabled={!slot} onClick={() => setDialogOpen(true)} className="btn-primary h-12 px-6 text-base">
               Reservar

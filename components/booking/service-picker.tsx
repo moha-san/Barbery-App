@@ -1,5 +1,5 @@
 import type { Service } from '@/types/database'
-import { formatPrice } from '@/lib/format'
+import { servicePrice } from '@/lib/format'
 import { CheckIcon, ClockIcon } from '@/components/icons'
 
 type Props = { services: Service[]; selectedId: string | null; onSelect: (s: Service) => void }
@@ -34,7 +34,7 @@ export function ServicePicker({ services, selectedId, onSelect }: Props) {
                 <ClockIcon /> {s.duracion_min} min
               </span>
             </span>
-            <span className="font-display shrink-0 text-2xl tabular-nums text-primary">{formatPrice(s.precio)}</span>
+            <span className="font-display shrink-0 text-2xl tabular-nums text-primary">{servicePrice(s.precio)}</span>
           </button>
         )
       })}
