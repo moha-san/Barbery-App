@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { TZDate } from '@date-fns/tz'
 import { siteConfig } from '@/config/site'
 import { quickBook, staffSlots } from '@/actions/clients'
-import { formatPrice, formatTime, toLocal } from '@/lib/format'
+import { formatTime, toLocal, servicePrice } from '@/lib/format'
 
 type Props = {
   barbers: { id: string; nombre: string }[]
@@ -78,7 +78,7 @@ export function QuickBookForm({ barbers, services, initial, today }: Props) {
         <div className="flex flex-wrap gap-2">
           {services.map((s) => (
             <button key={s.id} type="button" onClick={() => setServiceId(s.id)} className={chip(s.id === serviceId)} aria-pressed={s.id === serviceId}>
-              {s.nombre} · {formatPrice(s.precio)}
+              {s.nombre} · {servicePrice(s.precio)}
             </button>
           ))}
         </div>

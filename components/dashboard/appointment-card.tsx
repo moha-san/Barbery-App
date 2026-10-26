@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { remindClient, updateAppointmentStatus } from '@/actions/appointments'
-import { formatPrice, formatTime } from '@/lib/format'
+import { formatTime, servicePrice } from '@/lib/format'
 import { generateWhatsAppReminderLink, generateWhatsAppReviewLink } from '@/lib/whatsapp'
 import { BellIcon, ChatIcon, CheckIcon, ChevronDownIcon, PhoneIcon, StarIcon, UsersIcon, XIcon } from '@/components/icons'
 import type { AppointmentStatus, AppointmentWithRelations } from '@/types/database'
@@ -70,7 +70,7 @@ export function AppointmentCard({ appointment: a, highlight, visits, reviewUrl =
           </span>
           <span className="block truncate text-sm text-muted">
             {a.service?.nombre}
-            {a.service && <span className="hidden sm:inline"> · {formatPrice(a.service.precio)}</span>} · {a.barber?.nombre}
+            {a.service && <span className="hidden sm:inline"> · {servicePrice(a.service.precio)}</span>} · {a.barber?.nombre}
           </span>
         </span>
         <span className="flex items-center gap-2">

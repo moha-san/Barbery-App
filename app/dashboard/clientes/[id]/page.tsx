@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireStaff } from '@/lib/staff'
-import { formatDateLong, formatPrice, formatTime, toLocal } from '@/lib/format'
+import { formatDateLong, formatPrice, formatTime, toLocal, servicePrice } from '@/lib/format'
 import { shopWhatsAppLink } from '@/lib/whatsapp'
 import { SubHeader } from '@/components/dashboard/sub-header'
 import { ClientNotes } from '@/components/dashboard/client-notes'
@@ -126,7 +126,7 @@ export default async function ClientPage({ params }: { params: { id: string } })
                 </span>
                 <span className="block truncate text-muted">
                   {a.service?.nombre ?? '-'} · {a.barber?.nombre ?? '-'}
-                  {a.service ? ` · ${formatPrice(a.service.precio)}` : ''}
+                  {a.service ? ` · ${servicePrice(a.service.precio)}` : ''}
                 </span>
               </span>
               <span className={`text-xs font-semibold ${statusText[a.status].cls}`}>{statusText[a.status].text}</span>

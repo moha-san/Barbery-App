@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, type FormEvent } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { bookAppointment } from '@/actions/appointments'
-import { formatDateLong, formatPrice, formatTime } from '@/lib/format'
+import { formatDateLong, formatTime, servicePrice } from '@/lib/format'
 import type { Barber, Service } from '@/types/database'
 import { CLIENT_KEY as STORAGE_KEY, rememberAppointment } from '@/components/next-appointment'
 
@@ -68,7 +68,7 @@ export function ConfirmDialog({ open, onOpenChange, barber, service, startTime, 
             <dt className="text-muted">Hora</dt>
             <dd className="text-right tabular-nums">{formatTime(startTime)}</dd>
             <dt className="text-muted">Precio</dt>
-            <dd className="font-display text-right text-lg leading-none text-primary">{formatPrice(service.precio)}</dd>
+            <dd className="font-display text-right text-lg leading-none text-primary">{servicePrice(service.precio)}</dd>
           </dl>
 
           <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
