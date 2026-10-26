@@ -1,0 +1,13 @@
+-- Llama a la app cada 10 minutos para enviar los recordatorios (Vercel Hobby solo deja un cron al día).
+-- Pégalo en Supabase > SQL Editor cambiando TU_DOMINIO y TU_CRON_SECRET (el mismo que en Vercel).
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+select cron.schedule(
+  'recordatorios',
+  '*/10 * * * *',
+  $$ select net.http_get(
+       url := 'https://TU_DOMINIO/api/cron/recordatorios',
+       headers := jsonb_build_object('Authorization', 'Bearer TU_CRON_SECRET')
+     ) $$
+);

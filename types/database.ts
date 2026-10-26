@@ -98,7 +98,7 @@ export type Database = {
           start_time: string
           end_time: string
           status: AppointmentStatus
-          recordatorio_enviado: boolean
+          recordatorios_enviados: number[]
           created_at: string
         }
         Insert: {
@@ -109,7 +109,7 @@ export type Database = {
           start_time: string
           end_time: string
           status?: AppointmentStatus
-          recordatorio_enviado?: boolean
+          recordatorios_enviados?: number[]
           created_at?: string
         }
         Update: {
@@ -120,7 +120,7 @@ export type Database = {
           start_time?: string
           end_time?: string
           status?: AppointmentStatus
-          recordatorio_enviado?: boolean
+          recordatorios_enviados?: number[]
           created_at?: string
         }
         Relationships: [
