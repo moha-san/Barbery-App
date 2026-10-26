@@ -1,7 +1,7 @@
 'use client'
 /* eslint-disable @next/next/no-img-element */
 
-import { useState, useTransition, type ReactNode } from 'react'
+import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { addDays, format } from 'date-fns'
 import {
@@ -18,7 +18,8 @@ import type { ActionResult } from '@/actions/appointments'
 import { formatDateLong, formatTime, toLocal } from '@/lib/format'
 import type { WeekHours } from '@/lib/hours'
 import { uploadPhoto } from '@/lib/upload-photo'
-import { CheckIcon, ImageIcon, PlusIcon, TrashIcon, XIcon } from '@/components/icons'
+import { CheckIcon, CopyIcon, ImageIcon, PlusIcon, TrashIcon, XIcon } from '@/components/icons'
+import { barberPath } from '@/lib/barber-page'
 import type { Barber, GalleryPhoto, Service } from '@/types/database'
 
 // Guarda con un botón y enseña "Guardado" o el error debajo.
@@ -135,7 +136,7 @@ export function ServicesEditor({ services }: { services: Service[] }) {
 }
 
 // ─── Barberos ─────────────────────────────────────────────────────────────
-type BarberDraft = { id?: string; nombre: string; especialidad: string | null; avatar_url: string | null; activo: boolean }
+type BarberDraft = { id?: string; nombre: string; especialidad: string | null; avatar_url: string | null; activo: boolean; slug?: string | null; instagram?: string | null }
 
 function PhotoButton({ folder, onUploaded, children, className }: { folder: 'barberos' | 'galeria' | 'local'; onUploaded: (r: { url: string; path: string }) => void; children: ReactNode; className?: string }) {
   const [busy, setBusy] = useState(false)
@@ -169,7 +170,7 @@ function PhotoButton({ folder, onUploaded, children, className }: { folder: 'bar
   )
 }
 
-function BarberRow({ initial, onSaved }: { initial: BarberDraft; onSaved: () => void }) {
+function BarberRow({ initial, photos, onSaved }: { initial: BarberDraft; photos: GalleryPhoto[]; onSaved: () => void }) {
   const [b, setB] = useState(initial)
   const { pending, run, note } = useSave()
   const set = (patch: Partial<BarberDraft>) => setB((v) => ({ ...v, ...patch }))
@@ -179,9 +180,11 @@ function BarberRow({ initial, onSaved }: { initial: BarberDraft; onSaved: () => 
       className="card grid gap-3 p-4"
       onSubmit={(e) => {
         e.preventDefault()
-        run(() => saveBarber({ ...b, especialidad: b.especialidad?.trim() || null }), 'Guardado', (r) => {
+        const { slug: _slug, ...fields } = b
+        run(() => saveBarber({ ...fields, especialidad: b.especialidad?.trim() || null, instagram: b.instagram?.trim() || null }), 'Guardado', (r) => {
           if (r.ok) {
-            set({ id: (r.data as { id: string }).id })
+            const saved = r.data as { id: string; slug: string | null }
+            set({ id: saved.id, slug: saved.slug ?? b.slug })
             onSaved()
           }
         })
@@ -212,6 +215,11 @@ function BarberRow({ initial, onSaved }: { initial: BarberDraft; onSaved: () => 
         Especialidad <span className="font-normal text-muted">(opcional)</span>
         <input id={`be-${uid}`} className="field" value={b.especialidad ?? ''} onChange={(e) => set({ especialidad: e.target.value })} placeholder="Degradados y barba" />
       </label>
+      <label className="grid gap-1 text-sm font-medium" htmlFor={`bi-${uid}`}>
+        Instagram <span className="font-normal text-muted">(opcional)</span>
+        <input id={`bi-${uid}`} className="field" value={b.instagram ?? ''} onChange={(e) => set({ instagram: e.target.value })} placeholder="@carlos.barber" autoCapitalize="none" autoCorrect="off" />
+      </label>
+      {b.id && <BarberPageTools id={b.id} slug={b.slug ?? null} photos={photos} onChange={onSaved} />}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Toggle checked={b.activo} onChange={(v) => set({ activo: v })} label={b.activo ? 'Trabajando' : 'No aparece'} />
         <button className="btn-primary h-11 px-5" disabled={pending}>
@@ -223,14 +231,85 @@ function BarberRow({ initial, onSaved }: { initial: BarberDraft; onSaved: () => 
   )
 }
 
-export function BarbersEditor({ barbers }: { barbers: Barber[] }) {
+// Enlace para la bio de Instagram y fotos de los cortes de este barbero.
+function BarberPageTools({ id, slug, photos: initial, onChange }: { id: string; slug: string | null; photos: GalleryPhoto[]; onChange: () => void }) {
+  const [photos, setPhotos] = useState(initial)
+  const [copied, setCopied] = useState(false)
+  const { run, note } = useSave()
+  const path = barberPath({ id, slug })
+  const [origin, setOrigin] = useState('')
+  useEffect(() => setOrigin(window.location.origin), [])
+  const link = `${origin}${path}`
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      window.prompt('Copia este enlace:', link)
+    }
+  }
+  return (
+    <div className="grid gap-3 rounded-btn border border-border p-3">
+      <p className="text-sm font-semibold">Su página para Instagram</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <a href={path} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate text-sm text-primary underline-offset-4 hover:underline">
+          {link.replace(/^https?:\/\//, '')}
+        </a>
+        <button type="button" className="btn-ghost h-10" onClick={copy}>
+          {copied ? <CheckIcon /> : <CopyIcon />} {copied ? 'Copiado' : 'Copiar enlace'}
+        </button>
+      </div>
+      <p className="text-xs text-muted">Pégalo en la bio de Instagram del barbero. Sus clientes reservan directamente con él.</p>
+      <div className="grid grid-cols-4 gap-2">
+        {photos.map((g) => (
+          <div key={g.id} className="relative">
+            <img src={g.url} alt="" className="aspect-[4/5] w-full rounded-btn object-cover" />
+            <button
+              type="button"
+              aria-label="Borrar foto"
+              className="absolute right-1 top-1 grid h-8 w-8 place-items-center rounded-full bg-background/90 text-danger shadow"
+              onClick={() =>
+                run(() => deleteGalleryPhoto(g.id), 'Foto borrada', (r) => {
+                  if (r.ok) {
+                    setPhotos((list) => list.filter((x) => x.id !== g.id))
+                    onChange()
+                  }
+                })
+              }
+            >
+              <TrashIcon />
+            </button>
+          </div>
+        ))}
+        <PhotoButton
+          folder="galeria"
+          className="grid aspect-[4/5] w-full place-items-center content-center gap-1 rounded-btn border border-dashed border-border text-xs text-muted hover:border-primary"
+          onUploaded={({ url, path: p }) =>
+            run(() => addGalleryPhoto(url, p, id), 'Foto añadida', (r) => {
+              if (r.ok) {
+                setPhotos((list) => [{ id: (r.data as { id: string }).id, url, path: p, barber_id: id, created_at: new Date().toISOString() }, ...list])
+                onChange()
+              }
+            })
+          }
+        >
+          <PlusIcon className="text-lg" /> Corte
+        </PhotoButton>
+      </div>
+      {note}
+    </div>
+  )
+}
+
+export function BarbersEditor({ barbers, gallery = [] }: { barbers: Barber[]; gallery?: GalleryPhoto[] }) {
   const router = useRouter()
   const [drafts, setDrafts] = useState<BarberDraft[]>(barbers)
   return (
     <div className="grid gap-3">
       <div className="grid gap-3 md:grid-cols-2">
         {drafts.map((b, i) => (
-          <BarberRow key={b.id ?? `nuevo-${i}`} initial={b} onSaved={() => router.refresh()} />
+          <BarberRow key={b.id ?? `nuevo-${i}`} initial={b} photos={gallery.filter((g) => g.barber_id === b.id)} onSaved={() => router.refresh()} />
         ))}
       </div>
       <button type="button" className="btn-ghost h-12" onClick={() => setDrafts((d) => [...d, { nombre: '', especialidad: null, avatar_url: null, activo: true }])}>
@@ -374,7 +453,7 @@ export function PhotosEditor({ heroUrl, logoUrl, defaultHero, gallery: initial }
             onUploaded={({ url, path }) =>
               run(() => addGalleryPhoto(url, path), 'Foto añadida', (r) => {
                 if (r.ok) {
-                  setGallery((list) => [{ id: (r.data as { id: string }).id, url, path, created_at: new Date().toISOString() }, ...list])
+                  setGallery((list) => [{ id: (r.data as { id: string }).id, url, path, barber_id: null, created_at: new Date().toISOString() }, ...list])
                   router.refresh()
                 }
               })

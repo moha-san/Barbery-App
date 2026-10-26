@@ -46,6 +46,8 @@ export type Database = {
           especialidad: string | null
           activo: boolean
           created_at: string
+          slug: string | null
+          instagram: string | null
         }
         Insert: {
           id?: string
@@ -54,6 +56,8 @@ export type Database = {
           especialidad?: string | null
           activo?: boolean
           created_at?: string
+          slug?: string | null
+          instagram?: string | null
         }
         Update: {
           id?: string
@@ -62,6 +66,8 @@ export type Database = {
           especialidad?: string | null
           activo?: boolean
           created_at?: string
+          slug?: string | null
+          instagram?: string | null
         }
         Relationships: []
       }
@@ -251,9 +257,9 @@ export type Database = {
         Relationships: []
       }
       gallery_photos: {
-        Row: { id: string; url: string; path: string; created_at: string }
-        Insert: { id?: string; url: string; path: string; created_at?: string }
-        Update: { id?: string; url?: string; path?: string; created_at?: string }
+        Row: { id: string; url: string; path: string; created_at: string; barber_id: string | null }
+        Insert: { id?: string; url: string; path: string; created_at?: string; barber_id?: string | null }
+        Update: { id?: string; url?: string; path?: string; created_at?: string; barber_id?: string | null }
         Relationships: []
       }
     }
