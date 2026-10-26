@@ -2,8 +2,8 @@
 
 export type PushSupport = 'ok' | 'ios-install' | 'unsupported'
 
-const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-const isInstalled = () =>
+export const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+export const isInstalled = () =>
   matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
 
 // En iPhone los avisos solo funcionan con la app añadida a la pantalla de inicio (iOS 16.4+).

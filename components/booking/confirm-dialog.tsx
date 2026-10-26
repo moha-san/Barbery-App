@@ -5,6 +5,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { bookAppointment } from '@/actions/appointments'
 import { formatDateLong, formatPrice, formatTime } from '@/lib/format'
 import type { Barber, Service } from '@/types/database'
+import { rememberAppointment } from '@/components/next-appointment'
 
 const STORAGE_KEY = 'reserva-cliente'
 
@@ -43,6 +44,7 @@ export function ConfirmDialog({ open, onOpenChange, barber, service, startTime, 
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify({ nombre, telefono }))
         } catch {}
+        rememberAppointment({ start: startTime, servicio: service.nombre, barbero: barber.nombre })
         return onBooked(result.data.id)
       }
       setError(result.error)
