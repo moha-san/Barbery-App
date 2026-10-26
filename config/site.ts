@@ -133,7 +133,10 @@ export const siteConfig = {
   whatsapp: '34600000000',
   address: 'Calle Mayor 1, Madrid',
   // Enlace para dejar reseña en Google (Google Maps > tu negocio > "Pedir reseñas"). Vacío = no se enseña.
+  // El dueño también puede ponerlo en Ajustes > Reseñas (ese gana).
   googleReviewUrl: '',
+  // Minutos tras acabar la cita para mandar al cliente el aviso "¿Nos dejas una reseña?".
+  reviewDelayMin: 30,
   timezone: 'Europe/Madrid',
   locale: 'es-ES',
   currency: 'EUR',

@@ -108,6 +108,7 @@ export type Database = {
           end_time: string
           status: AppointmentStatus
           recordatorios_enviados: number[]
+          resena_enviada: boolean
           created_at: string
         }
         Insert: {
@@ -119,6 +120,7 @@ export type Database = {
           end_time: string
           status?: AppointmentStatus
           recordatorios_enviados?: number[]
+          resena_enviada?: boolean
           created_at?: string
         }
         Update: {
@@ -130,6 +132,7 @@ export type Database = {
           end_time?: string
           status?: AppointmentStatus
           recordatorios_enviados?: number[]
+          resena_enviada?: boolean
           created_at?: string
         }
         Relationships: [
@@ -197,6 +200,7 @@ export type Database = {
           business_hours: Json | null
           hero_url: string | null
           logo_url: string | null
+          google_review_url: string | null
           updated_at: string
         }
         Insert: {
@@ -204,6 +208,7 @@ export type Database = {
           business_hours?: Json | null
           hero_url?: string | null
           logo_url?: string | null
+          google_review_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -211,6 +216,7 @@ export type Database = {
           business_hours?: Json | null
           hero_url?: string | null
           logo_url?: string | null
+          google_review_url?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -120,8 +120,8 @@ export default async function HomePage() {
             </section>
           )}
 
-          {siteConfig.googleReviewUrl && (
-            <a href={siteConfig.googleReviewUrl} target="_blank" rel="noopener noreferrer" className="card mt-10 flex items-center gap-4 p-5 transition duration-200 hover:border-primary/50">
+          {settings.reviewUrl && (
+            <a href={settings.reviewUrl} target="_blank" rel="noopener noreferrer" className="card mt-10 flex items-center gap-4 p-5 transition duration-200 hover:border-primary/50">
               <StarIcon className="shrink-0 text-2xl text-accent" />
               <span className="min-w-0">
                 <span className="block font-semibold">¿Ya nos conoces?</span>

@@ -17,10 +17,10 @@ const statusStyle: Record<AppointmentStatus, { text: string; badge: string; dot:
 }
 
 // visits = cortes que ya tenía antes de este día (0 = cliente nuevo).
-type Props = { appointment: AppointmentWithRelations; highlight?: 'Ahora' | 'Siguiente'; visits?: number }
+type Props = { appointment: AppointmentWithRelations; highlight?: 'Ahora' | 'Siguiente'; visits?: number; reviewUrl?: string }
 
 // Fila compacta de la agenda. Al tocarla se abren las acciones (llamar, WhatsApp, completar…).
-export function AppointmentCard({ appointment: a, highlight, visits }: Props) {
+export function AppointmentCard({ appointment: a, highlight, visits, reviewUrl = '' }: Props) {
   const [open, setOpen] = useState(!!highlight)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -29,7 +29,7 @@ export function AppointmentCard({ appointment: a, highlight, visits }: Props) {
   const phone = a.client?.telefono
   const done = a.status !== 'confirmada'
   const panelId = `acciones-${a.id}`
-  const review = phone && a.client ? generateWhatsAppReviewLink(phone, a.client.nombre) : null
+  const review = phone && a.client ? generateWhatsAppReviewLink(phone, a.client.nombre, reviewUrl) : null
 
   function setStatus(next: AppointmentStatus) {
     setError(null)

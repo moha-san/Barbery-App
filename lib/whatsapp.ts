@@ -14,9 +14,9 @@ export const shopWhatsAppLink = (text?: string) =>
   `https://wa.me/${siteConfig.whatsapp}${text ? `?text=${encodeURIComponent(text)}` : ''}`
 
 // Tras el corte: pide una reseña en Google con el enlace ya puesto.
-export function generateWhatsAppReviewLink(phone: string, name: string): string | null {
-  if (!siteConfig.googleReviewUrl) return null
-  const text = `Gracias por venir, ${name}. Si te ha gustado, nos ayudas mucho con una reseña en Google: ${siteConfig.googleReviewUrl}`
+export function generateWhatsAppReviewLink(phone: string, name: string, reviewUrl: string): string | null {
+  if (!reviewUrl) return null
+  const text = `Gracias por venir, ${name}. Si te ha gustado, nos ayudas mucho con una reseña en Google: ${reviewUrl}`
   return `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`
 }
 

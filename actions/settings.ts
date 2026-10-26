@@ -110,6 +110,16 @@ export async function saveShopImage(kind: 'hero' | 'logo', url: string | null): 
   return done(undefined)
 }
 
+export async function saveReviewUrl(url: string): Promise<ActionResult> {
+  const s = await staff()
+  if (!s?.isAdmin) return NO_PERMISO
+  const clean = url.trim()
+  if (clean && !z.string().url().startsWith('https://').safeParse(clean).success) return { ok: false, error: 'Pega el enlace entero, empieza por https://' }
+  const { error } = await s.supabase.from('shop_settings').upsert({ id: 1, google_review_url: clean || null, updated_at: new Date().toISOString() })
+  if (error) return { ok: false, error: error.code === '42P01' || error.code === '42703' ? 'Falta preparar la base de datos (pega resenas.sql en Supabase)' : 'No se pudo guardar el enlace' }
+  return done(undefined)
+}
+
 export async function addGalleryPhoto(url: string, path: string, barberId: string | null = null): Promise<ActionResult<{ id: string }>> {
   const s = await staff()
   if (!s?.isAdmin) return NO_PERMISO

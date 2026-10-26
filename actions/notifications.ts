@@ -3,6 +3,7 @@ import { siteConfig } from '@/config/site'
 import { formatDateLong, formatTime, localDateKey } from '@/lib/format'
 import { sendPush } from '@/lib/push'
 import { dueReminder, reminderText } from '@/lib/reminders'
+import { getShopSettings } from '@/lib/shop'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { AppointmentWithRelations } from '@/types/database'
 
@@ -112,4 +113,36 @@ export async function sendManualReminder(appointmentId: string): Promise<number>
     url: '/',
     tag: `recordatorio-${a.id}`,
   })
+}
+
+// Un rato después de cada cita, el cliente recibe en el móvil "¿Nos dejas una reseña?".
+// Al tocar el aviso se abre la página de reseñas de Google. Solo una vez por cita.
+export async function sendReviewRequests(now = new Date()): Promise<{ resenas: number }> {
+  const { reviewUrl } = await getShopSettings()
+  if (!reviewUrl) return { resenas: 0 }
+  const supabase = createAdminClient()
+  const until = new Date(now.getTime() - siteConfig.reviewDelayMin * 60_000)
+  const from = new Date(until.getTime() - 6 * 3_600_000) // si el aviso se retrasa mucho, mejor no mandarlo
+
+  const { data, error } = await supabase
+    .from('appointments')
+    .select('id, client_id, barber:barbers(nombre)')
+    .in('status', ['confirmada', 'completada'])
+    .eq('resena_enviada', false)
+    .lte('end_time', until.toISOString())
+    .gt('end_time', from.toISOString())
+  if (error) throw new Error(error.message)
+
+  let resenas = 0
+  for (const row of data ?? []) {
+    const barber = (row as unknown as { barber: { nombre: string } | null }).barber
+    resenas += await sendPush(await clientSubs(row.client_id), {
+      title: `¿Qué tal tu corte${barber ? ` con ${barber.nombre}` : ''}?`,
+      body: `Si te ha gustado, déjanos una reseña en Google. Son 10 segundos y nos ayudas muchísimo.`,
+      url: reviewUrl,
+      tag: `resena-${row.id}`,
+    })
+    await supabase.from('appointments').update({ resena_enviada: true }).eq('id', row.id)
+  }
+  return { resenas }
 }
