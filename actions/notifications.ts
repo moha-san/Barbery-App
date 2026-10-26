@@ -32,10 +32,10 @@ export async function sendImmediateAlert(appointment: AppointmentWithRelations):
 }
 
 // El cliente canceló desde su móvil: el hueco queda libre.
-export async function sendCancelAlert(appointment: { id: string; start_time: string; client: { nombre: string } | null; barber: { nombre: string } | null }): Promise<void> {
+export async function sendCancelAlert(appointment: { id: string; start_time: string; client: { nombre: string } | null; barber: { nombre: string } | null }, waiting = 0): Promise<void> {
   await sendStaffAlert({
     title: `Cita cancelada: ${appointment.client?.nombre ?? 'cliente'}`,
-    body: `${formatDateLong(appointment.start_time)} a las ${formatTime(appointment.start_time)} con ${appointment.barber?.nombre ?? '-'}. El hueco ya está libre.`,
+    body: `${formatDateLong(appointment.start_time)} a las ${formatTime(appointment.start_time)} con ${appointment.barber?.nombre ?? '-'}. El hueco ya está libre.${waiting ? ` Hay ${waiting} en lista de espera.` : ''}`,
     url: `/dashboard?fecha=${localDateKey(appointment.start_time)}`,
     tag: `cita-${appointment.id}`,
   })

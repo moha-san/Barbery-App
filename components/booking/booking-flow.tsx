@@ -14,6 +14,7 @@ import { ServicePicker } from './service-picker'
 import { BarberPicker } from './barber-picker'
 import { DatePicker } from './date-picker'
 import { SlotGrid } from './slot-grid'
+import { WaitlistForm } from './waitlist-form'
 import { ConfirmDialog } from './confirm-dialog'
 import { PushButton } from '@/components/push-button'
 
@@ -183,6 +184,9 @@ export function BookingFlow({ barbers, services, hours, nextFree }: Props) {
               setDialogOpen(true)
             }}
           />
+          {slots && !slots.length && !loading && (
+            <WaitlistForm key={`${dateKey}-${barber.id}`} dateKey={dateKey} barberId={barbers.length > 1 ? barber.id : null} serviceId={service.id} barberName={barbers.length > 1 ? barber.nombre : undefined} />
+          )}
         </Step>
       )}
 
