@@ -9,7 +9,7 @@ import { localDateKey } from '@/lib/format'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { Barber, GalleryPhoto } from '@/types/database'
 
-export type ShopSettings = { hours: WeekHours; heroUrl: string; logoUrl: string | null }
+export type ShopSettings = { hours: WeekHours; heroUrl: string; logoUrl: string | null; reviewUrl: string }
 
 // Ajustes que el dueño cambia en el panel. Si la tabla aún no existe, se usan los de config/site.ts.
 export const getShopSettings = cache(async (): Promise<ShopSettings> => {
@@ -17,6 +17,7 @@ export const getShopSettings = cache(async (): Promise<ShopSettings> => {
     hours: parseWeekHours(null, siteConfig.businessHours),
     heroUrl: siteConfig.theme.heroImage,
     logoUrl: siteConfig.theme.logo,
+    reviewUrl: siteConfig.googleReviewUrl,
   }
   try {
     const { data, error } = await createAdminClient().from('shop_settings').select('*').eq('id', 1).maybeSingle()
@@ -25,6 +26,7 @@ export const getShopSettings = cache(async (): Promise<ShopSettings> => {
       hours: parseWeekHours(data.business_hours, siteConfig.businessHours),
       heroUrl: data.hero_url || fallback.heroUrl,
       logoUrl: data.logo_url || fallback.logoUrl,
+      reviewUrl: data.google_review_url || fallback.reviewUrl,
     }
   } catch {
     return fallback

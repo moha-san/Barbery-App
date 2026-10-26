@@ -11,6 +11,7 @@ import {
   deleteTimeOff,
   saveBarber,
   saveHours,
+  saveReviewUrl,
   saveService,
   saveShopImage,
 } from '@/actions/settings'
@@ -567,5 +568,36 @@ export function TimeOffEditor({ barbers, blocks, today }: { barbers: Pick<Barber
         {del.note}
       </div>
     </div>
+  )
+}
+
+// ─── Reseñas de Google ────────────────────────────────────────────────────
+export function ReviewEditor({ url: initial }: { url: string }) {
+  const [url, setUrl] = useState(initial)
+  const { pending, run, note } = useSave()
+  return (
+    <form
+      className="card grid gap-3 p-4"
+      onSubmit={(e) => {
+        e.preventDefault()
+        run(() => saveReviewUrl(url))
+      }}
+    >
+      <label className="grid gap-1.5 text-sm font-medium">
+        Enlace de reseñas de Google
+        <input type="url" inputMode="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://g.page/r/..." className="field" />
+      </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={pending} className="btn-primary h-11">
+          {pending ? 'Guardando…' : 'Guardar'}
+        </button>
+        {initial && (
+          <a href={initial} target="_blank" rel="noopener noreferrer" className="btn-ghost h-11">
+            Probar enlace
+          </a>
+        )}
+        {note}
+      </div>
+    </form>
   )
 }

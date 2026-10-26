@@ -227,7 +227,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         <ol className="grid gap-2">
           {[
             ...appointments.map((a) => ({ start: a.start_time, node: (
-              <AppointmentCard key={a.id} appointment={a} visits={visits.get(a.client_id) ?? 0} highlight={a.id === highlighted?.id ? (nowAppt ? 'Ahora' : 'Siguiente') : undefined} />
+              <AppointmentCard key={a.id} appointment={a} visits={visits.get(a.client_id) ?? 0} reviewUrl={settings.reviewUrl} highlight={a.id === highlighted?.id ? (nowAppt ? 'Ahora' : 'Siguiente') : undefined} />
             ) })),
             ...blocks.map((b) => ({ start: b.start_time, node: (
               <li key={b.id} className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-3 rounded-card border border-dashed border-border px-4 py-3 text-sm text-muted">

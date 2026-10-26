@@ -5,7 +5,7 @@ import { createSessionClient } from '@/lib/supabase/server'
 import { localDateKey } from '@/lib/format'
 import { getGallery, getShopSettings } from '@/lib/shop'
 import { ArrowLeftIcon } from '@/components/icons'
-import { BarbersEditor, HoursEditor, PhotosEditor, Section, ServicesEditor, TimeOffEditor, type TimeOffRow } from '@/components/settings/editors'
+import { BarbersEditor, HoursEditor, PhotosEditor, ReviewEditor, Section, ServicesEditor, TimeOffEditor, type TimeOffRow } from '@/components/settings/editors'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,6 +42,7 @@ export default async function SettingsPage() {
         ['horario', 'Horario'],
         ['descansos', 'Días libres'],
         ['fotos', 'Fotos'],
+        ['resenas', 'Reseñas'],
       ]
     : [['descansos', 'Días libres']]
 
@@ -95,6 +96,11 @@ export default async function SettingsPage() {
         {isAdmin && (
           <Section id="fotos" title="Fotos" hint="Sube fotos desde el móvil. Se hacen más pequeñas solas para que la web cargue rápido.">
             <PhotosEditor heroUrl={raw.data?.hero_url ?? null} logoUrl={raw.data?.logo_url ?? null} defaultHero={siteConfig.theme.heroImage} gallery={gallery.filter((g) => !g.barber_id)} />
+          </Section>
+        )}
+        {isAdmin && (
+          <Section id="resenas" title="Reseñas de Google" hint={`${siteConfig.reviewDelayMin} minutos después de cada corte, el cliente recibe un aviso en el móvil. Al tocarlo se abre Google para dejar su reseña. El enlace está en Google Maps > tu negocio > "Pedir reseñas".`}>
+            <ReviewEditor url={settings.reviewUrl} />
           </Section>
         )}
       </div>
