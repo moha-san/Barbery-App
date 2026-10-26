@@ -1,13 +1,12 @@
 import 'server-only'
-import { addDays } from 'date-fns'
-import { TZDate } from '@date-fns/tz'
 import { siteConfig } from '@/config/site'
 import { formatDateLong, formatTime, localDateKey } from '@/lib/format'
 import { sendPush } from '@/lib/push'
+import { dueReminder, reminderText } from '@/lib/reminders'
 import { createAdminClient } from '@/lib/supabase/server'
 import type { AppointmentWithRelations } from '@/types/database'
 
-// Sin 'use server' a propósito: esto solo se llama desde el servidor (reserva y cron), no desde el navegador.
+// Sin 'use server' a propósito: esto solo se llama desde el servidor (reserva, cron y panel), no desde el navegador.
 // generateWhatsAppReminderLink vive en lib/whatsapp.ts porque la usa el dashboard en el cliente.
 
 // Aviso al móvil del dueño y los barberos que activaron los avisos en el panel.
@@ -29,35 +28,75 @@ export async function sendImmediateAlert(appointment: AppointmentWithRelations):
   })
 }
 
-// Recordatorio a los clientes con cita mañana (lo llama el cron una vez al día).
-export async function sendTomorrowReminders(now = new Date()): Promise<{ citas: number; avisos: number }> {
-  const [y, m, d] = localDateKey(addDays(now, 1)).split('-').map(Number)
-  const start = new TZDate(y, m - 1, d, 0, 0, siteConfig.timezone)
-  const end = addDays(start, 1)
+type ReminderAppointment = {
+  id: string
+  client_id: string
+  start_time: string
+  barber: { nombre: string } | null
+  service: { nombre: string } | null
+}
+
+async function clientSubs(clientId: string) {
+  const { data } = await createAdminClient().from('push_subscriptions').select('endpoint, p256dh, auth').eq('user_id', clientId)
+  return data ?? []
+}
+
+function reminderBody(a: ReminderAppointment, lead: string): string {
+  return `${lead}: ${a.service?.nombre ?? 'tu cita'}${a.barber ? ` con ${a.barber.nombre}` : ''}. Si no puedes venir, avísanos.`
+}
+
+// Recordatorios automáticos (24 h, 1 h… según siteConfig.reminderHoursBefore). Lo llama el cron cada 10 min.
+export async function sendDueReminders(now = new Date()): Promise<{ avisos: number }> {
+  const hours = siteConfig.reminderHoursBefore
+  if (!hours.length) return { avisos: 0 }
+  const maxAhead = Math.max(...hours) * 3_600_000
   const supabase = createAdminClient()
 
-  const { data: appointments, error } = await supabase
+  const { data, error } = await supabase
     .from('appointments')
-    .select('id, client_id, start_time, barber:barbers(nombre), service:services(nombre)')
+    .select('id, client_id, start_time, created_at, recordatorios_enviados, barber:barbers(nombre), service:services(nombre)')
     .eq('status', 'confirmada')
-    .eq('recordatorio_enviado', false)
-    .gte('start_time', start.toISOString())
-    .lt('start_time', end.toISOString())
+    .gt('start_time', now.toISOString())
+    .lte('start_time', new Date(now.getTime() + maxAhead).toISOString())
   if (error) throw new Error(error.message)
 
   let avisos = 0
-  for (const a of appointments ?? []) {
-    const { data: subs } = await supabase.from('push_subscriptions').select('endpoint, p256dh, auth').eq('user_id', a.client_id)
-    const barber = (a.barber as { nombre: string } | null)?.nombre
-    const service = (a.service as { nombre: string } | null)?.nombre
-    avisos += await sendPush(subs ?? [], {
-      title: `Mañana tienes cita en ${siteConfig.name}`,
-      body: `${service ?? 'Tu cita'}${barber ? ` con ${barber}` : ''} a las ${formatTime(a.start_time)}. Si no puedes venir, avísanos.`,
+  for (const row of data ?? []) {
+    const h = dueReminder({ start: row.start_time, createdAt: row.created_at, sent: row.recordatorios_enviados, hoursBefore: hours, now })
+    if (h === null) continue
+    const a = row as unknown as ReminderAppointment
+    const lead = reminderText(h, formatTime(a.start_time), formatDateLong(a.start_time))
+    avisos += await sendPush(await clientSubs(a.client_id), {
+      title: `Tu cita en ${siteConfig.name}`,
+      body: reminderBody(a, lead),
       url: '/',
       tag: `recordatorio-${a.id}`,
     })
-    // Se marca aunque el cliente no activara avisos, para no repasarla otra vez.
-    await supabase.from('appointments').update({ recordatorio_enviado: true }).eq('id', a.id)
+    // Se marca aunque el cliente no tenga avisos activados, para no repasarla.
+    await supabase
+      .from('appointments')
+      .update({ recordatorios_enviados: [...row.recordatorios_enviados, h] })
+      .eq('id', a.id)
   }
-  return { citas: appointments?.length ?? 0, avisos }
+  return { avisos }
+}
+
+// Recordatorio que manda el barbero a mano desde el panel. Devuelve cuántos móviles lo recibieron.
+export async function sendManualReminder(appointmentId: string): Promise<number> {
+  const { data } = await createAdminClient()
+    .from('appointments')
+    .select('id, client_id, start_time, barber:barbers(nombre), service:services(nombre)')
+    .eq('id', appointmentId)
+    .single()
+  if (!data) return 0
+  const a = data as unknown as ReminderAppointment
+  const lead = localDateKey(a.start_time) === localDateKey(new Date())
+    ? `Hoy a las ${formatTime(a.start_time)}`
+    : `El ${formatDateLong(a.start_time)} a las ${formatTime(a.start_time)}`
+  return sendPush(await clientSubs(a.client_id), {
+    title: `Recordatorio de ${siteConfig.name}`,
+    body: reminderBody(a, lead),
+    url: '/',
+    tag: `recordatorio-${a.id}`,
+  })
 }

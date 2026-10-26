@@ -235,7 +235,7 @@ function BookedScreen({ start, appointmentId, service, barber, onAgain }: { star
         </a>
       </div>
       <div className="relative">
-        <PushButton kind="client" appointmentId={appointmentId} label="Avisarme el día antes" doneLabel="Te avisaremos el día antes" className="btn-ghost h-12 w-full" />
+        <PushButton kind="client" appointmentId={appointmentId} label="Avisarme antes de la cita" doneLabel="Te avisaremos antes de tu cita" className="btn-ghost h-12 w-full" />
       </div>
       <p className="relative text-sm text-muted">
         ¿Necesitas cambiarla?{' '}

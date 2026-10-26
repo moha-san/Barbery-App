@@ -32,7 +32,8 @@ actions/appointments.ts        getAvailableSlots, bookAppointment, updateAppoint
 actions/notifications.ts       Aviso al móvil del dueño por reserva y recordatorio del día antes
 actions/push.ts                Guardar el móvil que acepta avisos (personal o cliente)
 lib/push.ts, lib/push-client.ts  Envío de avisos (web-push) y permiso en el navegador
-app/api/cron/recordatorios/    Recordatorios diarios (Vercel Cron, vercel.json)
+app/api/cron/recordatorios/    Recordatorios automáticos (lo llama pg_cron cada 10 min)
+lib/reminders.ts (+ .test.ts)  Qué recordatorio toca a cada cita
 actions/auth.ts                Login / logout del equipo
 lib/slots.ts (+ .test.ts)      Cálculo de huecos libres
 lib/whatsapp.ts                generateWhatsAppReminderLink
@@ -48,7 +49,8 @@ app/manifest.ts, public/sw.js  PWA instalable
 ## Avisos al móvil
 
 - **Dueño y barberos:** en el panel tocan *Activar avisos*. Cada reserva nueva les llega al móvil.
-- **Clientes:** tras reservar tocan *Avisarme el día antes*. Vercel Cron llama a `/api/cron/recordatorios` cada día a las 17:00 UTC y avisa de las citas de mañana (una vez por cita).
+- **Clientes:** tras reservar tocan *Avisarme antes de la cita*. Reciben un aviso por cada valor de `reminderHoursBefore` en `config/site.ts` (por defecto 24 h y 1 h antes). Supabase (pg_cron) llama a `/api/cron/recordatorios` cada 10 min: ver `supabase/cron-recordatorios.sql.example`.
+- **Barberos:** en cada cita del panel, *Enviar recordatorio al móvil* avisa al cliente al momento (si activó los avisos; si no, queda el botón de WhatsApp).
 - **iPhone:** solo funciona con la app añadida a la pantalla de inicio (iOS 16.4 o más). La app lo explica si no está instalada.
 - Variables: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`. Sin ellas la app funciona, pero no manda avisos.
 

@@ -8,7 +8,7 @@ import { siteConfig } from '@/config/site'
 import { computeSlots } from '@/lib/slots'
 import { localDateKey } from '@/lib/format'
 import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
-import { sendImmediateAlert } from '@/actions/notifications'
+import { sendImmediateAlert, sendManualReminder } from '@/actions/notifications'
 import type { AppointmentWithRelations } from '@/types/database'
 
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string }
@@ -167,4 +167,20 @@ export async function updateAppointmentStatus(
 
   revalidatePath('/dashboard')
   return { ok: true, data: undefined }
+}
+
+// Botón "Avisar" del panel: manda un recordatorio al móvil del cliente.
+export async function remindClient(id: string): Promise<ActionResult> {
+  if (!uuidSchema.safeParse(id).success) return { ok: false, error: 'Datos inválidos' }
+  // Con la sesión del barbero: si RLS no le deja ver la cita, no puede avisar.
+  const { data } = await createSessionClient().from('appointments').select('id').eq('id', id).eq('status', 'confirmada').maybeSingle()
+  if (!data) return { ok: false, error: 'Sin permiso para esta cita' }
+  try {
+    const sent = await sendManualReminder(id)
+    if (!sent) return { ok: false, error: 'Este cliente no tiene los avisos activados. Usa WhatsApp.' }
+    return { ok: true, data: undefined }
+  } catch (e) {
+    console.error('[remindClient]', e)
+    return { ok: false, error: 'No se pudo enviar el aviso' }
+  }
 }

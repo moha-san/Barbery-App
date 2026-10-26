@@ -117,6 +117,8 @@ export const siteConfig = {
   slotStepMin: 15,
   // Días que se pueden reservar por adelantado
   bookingWindowDays: 30,
+  // Avisos al móvil del cliente: cuántas horas antes de la cita (ej. [24, 1] = un día antes y una hora antes)
+  reminderHoursBefore: [24, 1],
   businessHours: {
     0: [],
     1: [{ open: '10:00', close: '14:00' }, { open: '16:00', close: '20:00' }],

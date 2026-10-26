@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { updateAppointmentStatus } from '@/actions/appointments'
+import { remindClient, updateAppointmentStatus } from '@/actions/appointments'
 import { formatPrice, formatTime } from '@/lib/format'
 import { generateWhatsAppReminderLink } from '@/lib/whatsapp'
-import { ChatIcon, CheckIcon, PhoneIcon, XIcon } from '@/components/icons'
+import { BellIcon, ChatIcon, CheckIcon, PhoneIcon, XIcon } from '@/components/icons'
 import type { AppointmentStatus, AppointmentWithRelations } from '@/types/database'
 
 // Color por estado: barra lateral + etiqueta.
@@ -20,6 +20,7 @@ type Props = { appointment: AppointmentWithRelations; highlight?: 'Ahora' | 'Sig
 export function AppointmentCard({ appointment: a, highlight }: Props) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [reminded, setReminded] = useState(false)
   const status = statusStyle[a.status]
   const phone = a.client?.telefono
   const done = a.status !== 'confirmada'
@@ -29,6 +30,15 @@ export function AppointmentCard({ appointment: a, highlight }: Props) {
     startTransition(async () => {
       const result = await updateAppointmentStatus(a.id, next)
       if (!result.ok) setError(result.error)
+    })
+  }
+
+  function remind() {
+    setError(null)
+    startTransition(async () => {
+      const result = await remindClient(a.id)
+      if (result.ok) setReminded(true)
+      else setError(result.error)
     })
   }
 
@@ -63,8 +73,13 @@ export function AppointmentCard({ appointment: a, highlight }: Props) {
         )}
         {phone && a.client && (
           <a href={generateWhatsAppReminderLink(phone, a.client.nombre, a.start_time)} target="_blank" rel="noopener noreferrer" className="btn-ghost">
-            <ChatIcon className="text-whatsapp" /> Recordatorio
+            <ChatIcon className="text-whatsapp" /> WhatsApp
           </a>
+        )}
+        {a.status === 'confirmada' && new Date(a.start_time).getTime() > Date.now() && (
+          <button type="button" disabled={pending || reminded} onClick={remind} className="btn-ghost col-span-2">
+            {reminded ? <><CheckIcon className="text-success" /> Aviso enviado</> : <><BellIcon /> Enviar recordatorio al móvil</>}
+          </button>
         )}
         {a.status === 'confirmada' ? (
           <>
