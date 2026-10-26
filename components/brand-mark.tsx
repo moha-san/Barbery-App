@@ -2,7 +2,7 @@
 import { siteConfig } from '@/config/site'
 
 // Iniciales del nombre sin palabras cortas: "Barbería El Clásico" -> "BC"
-function initials(name: string) {
+export function initials(name: string) {
   const words = name.split(/\s+/).filter((w) => w.length > 2)
   const list = words.length ? words : [name]
   return (list[0][0] + (list.length > 1 ? list[list.length - 1][0] : '')).toUpperCase()

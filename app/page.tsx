@@ -47,7 +47,7 @@ export default async function HomePage() {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto max-w-6xl pb-40 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,36rem)] lg:gap-16 lg:px-8 lg:pt-8">
+      <main className="mx-auto max-w-6xl pb-40 lg:grid lg:pb-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,36rem)] lg:gap-16 lg:px-8 lg:pt-8">
         <section className="relative isolate overflow-hidden lg:sticky lg:top-24 lg:flex lg:h-[calc(100dvh-8rem)] lg:min-h-[34rem] lg:flex-col lg:justify-end lg:rounded-card lg:border lg:border-border">
           <img src={siteConfig.theme.heroImage} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
           <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/75 to-background/10" />

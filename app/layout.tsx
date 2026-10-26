@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   applicationName: siteConfig.name,
   appleWebApp: { capable: true, title: siteConfig.name, statusBarStyle: theme.mode === 'dark' ? 'black-translucent' : 'default' },
-  icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-192.png' },
+  icons: { icon: '/brand-icon/192', apple: '/brand-icon/180' },
 }
 
 export const viewport: Viewport = {
