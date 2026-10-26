@@ -143,17 +143,17 @@ export const themePresets = {
 } satisfies Record<string, Theme>
 
 // 👇 Cambia esta línea para elegir el estilo: 'clasico' | 'urbano' | 'minimal' | 'fresco' | 'jk'
-const preset: keyof typeof themePresets = 'jk'
+const preset: keyof typeof themePresets = 'fresco'
 
 export const siteConfig = {
-  name: 'JK The Barber',
+  name: 'Barbería El Clásico',
   description: 'Reserva tu cita en segundos.',
   // Para un cliente con estilo propio, copia un preset y cambia sus valores.
   theme: themePresets[preset] as Theme,
-  phone: '+34621300223',
+  phone: '+34600000000',
   // Formato internacional sin "+" ni espacios, como lo pide wa.me
-  whatsapp: '34621300223',
-  address: 'C. Tres de Abril, 5, Molina de Segura',
+  whatsapp: '34600000000',
+  address: 'Calle Mayor 1, Madrid',
   // Enlace para dejar reseña en Google (Google Maps > tu negocio > "Pedir reseñas"). Vacío = no se enseña.
   // El dueño también puede ponerlo en Ajustes > Reseñas (ese gana).
   googleReviewUrl: '',
@@ -171,12 +171,12 @@ export const siteConfig = {
   // Horario inicial. Luego el dueño lo cambia desde el panel (Ajustes > Horario).
   businessHours: {
     0: [],
-    1: [{ open: '10:00', close: '14:00' }, { open: '15:30', close: '21:00' }],
-    2: [{ open: '10:00', close: '14:00' }, { open: '15:30', close: '21:00' }],
-    3: [{ open: '10:00', close: '14:00' }, { open: '15:30', close: '21:00' }],
-    4: [{ open: '10:00', close: '14:00' }, { open: '15:30', close: '21:00' }],
-    5: [{ open: '10:00', close: '14:00' }, { open: '15:30', close: '21:00' }],
-    6: [{ open: '10:00', close: '15:00' }],
+    1: [{ open: '10:00', close: '14:00' }, { open: '16:00', close: '20:00' }],
+    2: [{ open: '10:00', close: '14:00' }, { open: '16:00', close: '20:00' }],
+    3: [{ open: '10:00', close: '14:00' }, { open: '16:00', close: '20:00' }],
+    4: [{ open: '10:00', close: '14:00' }, { open: '16:00', close: '20:00' }],
+    5: [{ open: '10:00', close: '20:00' }],
+    6: [{ open: '10:00', close: '14:00' }],
   } satisfies Record<Weekday, TimeWindow[]>,
 } as const
 
