@@ -2,6 +2,7 @@ import { siteConfig } from '@/config/site'
 import { BrandMark } from '@/components/brand-mark'
 import { InstallApp } from '@/components/install-app'
 import { PhoneIcon } from '@/components/icons'
+import { NextAppointment } from '@/components/next-appointment'
 
 export function SiteHeader() {
   return (
@@ -15,6 +16,7 @@ export function SiteHeader() {
           <span className="sr-only sm:hidden">Llamar</span>
         </a>
       </div>
+      <NextAppointment />
     </header>
   )
 }
