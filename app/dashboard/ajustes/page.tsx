@@ -77,8 +77,8 @@ export default async function SettingsPage() {
             <Section id="servicios" title="Servicios y precios" hint="Lo que el cliente ve al reservar. Para dejar de ofrecer uno, ocúltalo (las citas antiguas se guardan).">
               <ServicesEditor services={services.data ?? []} />
             </Section>
-            <Section id="barberos" title="Barberos" hint="Con foto se reserva más. Si alguien deja de trabajar aquí, desactívalo.">
-              <BarbersEditor barbers={barbers.data ?? []} />
+            <Section id="barberos" title="Barberos" hint="Con foto se reserva más. Cada barbero tiene su propia página con sus cortes: copia su enlace y ponlo en su Instagram. Si alguien deja de trabajar aquí, desactívalo.">
+              <BarbersEditor barbers={barbers.data ?? []} gallery={gallery.filter((g) => g.barber_id)} />
             </Section>
             <Section id="horario" title="Horario" hint="Para cerrar a mediodía, pon dos tramos: mañana y tarde. Los cambios se ven al momento en la web.">
               <HoursEditor hours={settings.hours} />
@@ -94,7 +94,7 @@ export default async function SettingsPage() {
         </Section>
         {isAdmin && (
           <Section id="fotos" title="Fotos" hint="Sube fotos desde el móvil. Se hacen más pequeñas solas para que la web cargue rápido.">
-            <PhotosEditor heroUrl={raw.data?.hero_url ?? null} logoUrl={raw.data?.logo_url ?? null} defaultHero={siteConfig.theme.heroImage} gallery={gallery} />
+            <PhotosEditor heroUrl={raw.data?.hero_url ?? null} logoUrl={raw.data?.logo_url ?? null} defaultHero={siteConfig.theme.heroImage} gallery={gallery.filter((g) => !g.barber_id)} />
           </Section>
         )}
       </div>

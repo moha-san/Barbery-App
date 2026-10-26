@@ -7,7 +7,7 @@ import { computeSlots, type BusyRange } from '@/lib/slots'
 import { parseWeekHours, type WeekHours } from '@/lib/hours'
 import { localDateKey } from '@/lib/format'
 import { createAdminClient } from '@/lib/supabase/server'
-import type { GalleryPhoto } from '@/types/database'
+import type { Barber, GalleryPhoto } from '@/types/database'
 
 export type ShopSettings = { hours: WeekHours; heroUrl: string; logoUrl: string | null }
 
@@ -33,10 +33,24 @@ export const getShopSettings = cache(async (): Promise<ShopSettings> => {
 
 export const getGallery = cache(async (): Promise<GalleryPhoto[]> => {
   try {
-    const { data } = await createAdminClient().from('gallery_photos').select('*').order('created_at', { ascending: false }).limit(24)
+    const { data } = await createAdminClient().from('gallery_photos').select('*').order('created_at', { ascending: false }).limit(60)
     return data ?? []
   } catch {
     return []
+  }
+})
+
+// Barbero por su enlace (/barbero/carlos) o por su id. Null si no existe o no está trabajando.
+export const getBarberByLink = cache(async (link: string): Promise<Barber | null> => {
+  try {
+    const db = createAdminClient()
+    const isId = /^[0-9a-f-]{36}$/i.test(link)
+    const { data } = isId
+      ? await db.from('barbers').select('*').eq('id', link).eq('activo', true).maybeSingle()
+      : await db.from('barbers').select('*').eq('slug', link.toLowerCase()).eq('activo', true).maybeSingle()
+    return data ?? null
+  } catch {
+    return null
   }
 })
 

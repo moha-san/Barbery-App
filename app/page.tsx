@@ -1,12 +1,14 @@
 /* eslint-disable @next/next/no-img-element */
 import { SiteHeader } from '@/components/site-header'
 import { BookingFlow } from '@/components/booking/booking-flow'
-import { ChatIcon, ClockIcon, MapPinIcon, NavigationIcon, PhoneIcon, StarIcon } from '@/components/icons'
+import Link from 'next/link'
+import { ArrowRightIcon, ChatIcon, ClockIcon, MapPinIcon, NavigationIcon, PhoneIcon, StarIcon } from '@/components/icons'
 import { siteConfig } from '@/config/site'
 import { toLocal, whenLabel } from '@/lib/format'
 import { shopWhatsAppLink } from '@/lib/whatsapp'
 import { createSessionClient } from '@/lib/supabase/server'
 import { openStatus } from '@/lib/hours'
+import { barberPath } from '@/lib/barber-page'
 import { getGallery, getShopSettings, nextFreeSlot } from '@/lib/shop'
 
 export const revalidate = 60
@@ -85,11 +87,33 @@ export default async function HomePage() {
             <BookingFlow barbers={barbers.data} services={services.data} hours={settings.hours} nextFree={nextFree} />
           )}
 
+          {(barbers.data?.length ?? 0) > 1 && (
+            <section aria-labelledby="equipo" className="mt-14">
+              <h2 id="equipo" className="text-2xl">El equipo</h2>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {barbers.data!.map((b) => (
+                  <Link key={b.id} href={barberPath(b)} className="card flex items-center gap-4 p-4 transition duration-200 hover:border-primary/50">
+                    {b.avatar_url ? (
+                      <img src={b.avatar_url} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                    ) : (
+                      <span className="font-display grid h-14 w-14 shrink-0 place-items-center rounded-full bg-primary/10 text-2xl text-primary">{b.nombre.charAt(0)}</span>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold">{b.nombre}</span>
+                      <span className="block truncate text-sm text-muted">{b.especialidad ?? 'Ver sus cortes'}</span>
+                    </span>
+                    <ArrowRightIcon className="shrink-0 text-muted" />
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
           {gallery.length > 0 && (
             <section aria-labelledby="galeria" className="mt-14">
               <h2 id="galeria" className="text-2xl">Nuestro trabajo</h2>
               <div className="-mx-4 mt-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-3 lg:px-0">
-                {gallery.map((g) => (
+                {gallery.slice(0, 24).map((g) => (
                   <img key={g.id} src={g.url} alt="Corte hecho en la barbería" loading="lazy" className="aspect-[4/5] w-48 shrink-0 snap-start rounded-card border border-border object-cover lg:w-full" />
                 ))}
               </div>

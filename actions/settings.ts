@@ -6,6 +6,7 @@ import { TZDate } from '@date-fns/tz'
 import { z } from 'zod'
 import { siteConfig } from '@/config/site'
 import { weekHoursSchema } from '@/lib/hours'
+import { instagramHandle, slugify, uniqueSlug } from '@/lib/barber-page'
 import { createSessionClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/actions/appointments'
 
@@ -58,19 +59,32 @@ const barberSchema = z.object({
   nombre: z.string().trim().min(2, 'Escribe el nombre').max(60),
   especialidad: z.string().trim().max(80).nullable(),
   avatar_url: z.string().url().nullable(),
+  instagram: z.string().trim().max(120).nullable().optional(),
   activo: z.boolean(),
 })
 
-export async function saveBarber(input: z.input<typeof barberSchema>): Promise<ActionResult<{ id: string }>> {
+export async function saveBarber(input: z.input<typeof barberSchema>): Promise<ActionResult<{ id: string; slug: string | null }>> {
   const s = await staff()
   if (!s?.isAdmin) return NO_PERMISO
   const parsed = barberSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) }
-  const { id, ...row } = parsed.data
+  const { id, instagram, ...base } = parsed.data
+  if (instagram && !instagramHandle(instagram)) return { ok: false, error: 'Escribe solo el usuario de Instagram, por ejemplo @carlos.barber' }
+
+  // Enlace propio (/barbero/carlos): se crea una vez con el nombre y ya no cambia, para no romper el de Instagram.
+  const { data: all, error: listError } = await s.supabase.from('barbers').select('id, slug')
+  const hasPageColumns = !listError
+  let slug: string | null = null
+  if (hasPageColumns) {
+    const current = all?.find((b) => b.id === id)?.slug
+    slug = current || uniqueSlug(slugify(base.nombre), (all ?? []).filter((b) => b.id !== id).map((b) => b.slug ?? ''))
+  }
+  const row = hasPageColumns ? { ...base, slug, instagram: instagramHandle(instagram) } : base
+
   const q = id ? s.supabase.from('barbers').update(row).eq('id', id) : s.supabase.from('barbers').insert(row)
   const { data, error } = await q.select('id').single()
   if (error || !data) return { ok: false, error: 'No se pudo guardar el barbero' }
-  return done({ id: data.id })
+  return done({ id: data.id, slug })
 }
 
 // ─── Horario y fotos del local ────────────────────────────────────────────
@@ -96,12 +110,13 @@ export async function saveShopImage(kind: 'hero' | 'logo', url: string | null): 
   return done(undefined)
 }
 
-export async function addGalleryPhoto(url: string, path: string): Promise<ActionResult<{ id: string }>> {
+export async function addGalleryPhoto(url: string, path: string, barberId: string | null = null): Promise<ActionResult<{ id: string }>> {
   const s = await staff()
   if (!s?.isAdmin) return NO_PERMISO
   if (!z.string().url().safeParse(url).success || !path) return { ok: false, error: 'Foto inválida' }
-  const { data, error } = await s.supabase.from('gallery_photos').insert({ url, path }).select('id').single()
-  if (error || !data) return { ok: false, error: 'No se pudo guardar la foto' }
+  if (barberId && !z.string().uuid().safeParse(barberId).success) return { ok: false, error: 'Barbero inválido' }
+  const { data, error } = await s.supabase.from('gallery_photos').insert(barberId ? { url, path, barber_id: barberId } : { url, path }).select('id').single()
+  if (error || !data) return { ok: false, error: error?.code === '42703' ? 'Falta preparar la base de datos (pega el SQL de barberos en Supabase)' : 'No se pudo guardar la foto' }
   return done({ id: data.id })
 }
 
