@@ -1,8 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 import { siteConfig } from '@/config/site'
 
-// Iniciales del nombre sin palabras cortas: "Barbería El Clásico" -> "BC"
+// Iniciales del nombre sin palabras cortas: "Barbería El Clásico" -> "BC".
+// Si el nombre empieza por unas siglas, se usan esas: "JK The Barber" -> "JK".
 export function initials(name: string) {
+  const first = name.trim().split(/\s+/)[0]
+  if (/^[A-Z0-9]{2,3}$/.test(first)) return first
   const words = name.split(/\s+/).filter((w) => w.length > 2)
   const list = words.length ? words : [name]
   return (list[0][0] + (list.length > 1 ? list[list.length - 1][0] : '')).toUpperCase()

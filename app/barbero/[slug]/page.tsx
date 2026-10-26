@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import { sortServices } from '@/lib/format'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -35,7 +36,7 @@ export default async function BarberPage({ params }: Props) {
 
   const supabase = createSessionClient()
   const [services, settings, gallery] = await Promise.all([
-    supabase.from('services').select('*').eq('activo', true).order('precio'),
+    supabase.from('services').select('*').eq('activo', true).order('precio').then((r) => ({ ...r, data: r.data && sortServices(r.data) })),
     getShopSettings(),
     getGallery(),
   ])
@@ -98,7 +99,7 @@ export default async function BarberPage({ params }: Props) {
               <p className="mt-2 text-sm text-muted">Llámanos o escríbenos por WhatsApp y te buscamos hueco.</p>
             </div>
           ) : (
-            <BookingFlow barbers={[barber]} services={services.data} hours={settings.hours} nextFree={nextFree} />
+            <BookingFlow barbers={[barber]} services={services.data ?? []} hours={settings.hours} nextFree={nextFree} />
           )}
         </div>
       </main>

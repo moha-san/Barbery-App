@@ -79,6 +79,7 @@ export type Database = {
           precio: number
           activo: boolean
           created_at: string
+          orden: number | null
         }
         Insert: {
           id?: string
@@ -95,6 +96,7 @@ export type Database = {
           precio?: number
           activo?: boolean
           created_at?: string
+          orden?: number | null
         }
         Relationships: []
       }

@@ -26,3 +26,8 @@ export function whenLabel(iso: string): string {
 
 // Precio de un servicio: 0 € significa "según el trabajo" (por ejemplo, el color).
 export const servicePrice = (precio: number) => (precio > 0 ? formatPrice(precio) : 'Variable')
+
+// Servicios en el orden del dueño (columna "orden": los más pedidos arriba) y, si no hay orden, por precio.
+export function sortServices<T extends { precio: number; orden?: number | null }>(list: T[] | null): T[] {
+  return [...(list ?? [])].sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.precio - b.precio)
+}

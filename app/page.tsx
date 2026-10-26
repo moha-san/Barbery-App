@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import { sortServices } from '@/lib/format'
 import { SiteHeader } from '@/components/site-header'
 import { BookingFlow } from '@/components/booking/booking-flow'
 import Link from 'next/link'
@@ -19,7 +20,7 @@ export default async function HomePage() {
   const supabase = createSessionClient()
   const [barbers, services] = await Promise.all([
     supabase.from('barbers').select('*').eq('activo', true).order('nombre'),
-    supabase.from('services').select('*').eq('activo', true).order('precio'),
+    supabase.from('services').select('*').eq('activo', true).order('precio').then((r) => ({ ...r, data: r.data && sortServices(r.data) })),
   ])
   const [settings, gallery] = await Promise.all([getShopSettings(), getGallery()])
   const now = toLocal(new Date())
@@ -84,7 +85,7 @@ export default async function HomePage() {
               <p className="mt-2 text-sm text-muted">Llámanos o escríbenos por WhatsApp y te buscamos hueco.</p>
             </div>
           ) : (
-            <BookingFlow barbers={barbers.data} services={services.data} hours={settings.hours} nextFree={nextFree} />
+            <BookingFlow barbers={barbers.data} services={services.data ?? []} hours={settings.hours} nextFree={nextFree} />
           )}
 
           {(barbers.data?.length ?? 0) > 1 && (
