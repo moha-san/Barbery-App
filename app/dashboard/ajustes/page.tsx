@@ -1,3 +1,4 @@
+import { sortServices } from '@/lib/format'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { siteConfig } from '@/config/site'
@@ -20,7 +21,7 @@ export default async function SettingsPage() {
   const isAdmin = profile.rol === 'admin'
 
   const [services, barbers, blocks, raw, settings, gallery] = await Promise.all([
-    supabase.from('services').select('*').order('precio'),
+    supabase.from('services').select('*').order('precio').then((r) => ({ ...r, data: r.data && sortServices(r.data) })),
     supabase.from('barbers').select('*').order('nombre'),
     supabase
       .from('time_off')

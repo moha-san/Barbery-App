@@ -1,3 +1,4 @@
+import { sortServices } from '@/lib/format'
 import { requireStaff } from '@/lib/staff'
 import { localDateKey } from '@/lib/format'
 import { SubHeader } from '@/components/dashboard/sub-header'
@@ -12,7 +13,7 @@ export default async function QuickBookPage({ searchParams }: Props) {
   const { supabase } = await requireStaff()
   const [barbers, services] = await Promise.all([
     supabase.from('barbers').select('id, nombre').eq('activo', true).order('nombre'),
-    supabase.from('services').select('id, nombre, duracion_min, precio').eq('activo', true).order('precio'),
+    supabase.from('services').select('*').eq('activo', true).order('precio').then((r) => ({ ...r, data: r.data && sortServices(r.data) })),
   ])
   const today = localDateKey(new Date())
   const fecha = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.fecha ?? '') && searchParams.fecha! >= today ? searchParams.fecha! : today

@@ -118,20 +118,42 @@ export const themePresets = {
     heroImage: '/brand/hero-fresco.svg',
     tagline: 'Tu barbería de confianza, a dos calles de casa.',
   },
+  // JK The Barber (Molina de Segura): negro y blanco, como su local.
+  jk: {
+    mode: 'dark',
+    colors: {
+      primary: '#f4f4f5',
+      onPrimary: '#0a0a0b',
+      accent: '#c9cdd4',
+      background: '#0a0a0b',
+      surface: '#151517',
+      text: '#f7f7f8',
+      muted: '#a1a1aa',
+      border: '#2a2a2e',
+      success: '#5ee38f',
+      danger: '#ff7a6b',
+      whatsapp: '#25d366',
+    },
+    fonts: { display: 'unbounded', body: 'inter' },
+    radius: 8,
+    logo: null,
+    heroImage: '/brand/hero-jk.jpg',
+    tagline: 'Cortes, degradados y barba en el centro de Molina. Reserva con Josiko o con Adrián.',
+  },
 } satisfies Record<string, Theme>
 
-// 👇 Cambia esta línea para elegir el estilo: 'clasico' | 'urbano' | 'minimal' | 'fresco'
-const preset: keyof typeof themePresets = 'fresco'
+// 👇 Cambia esta línea para elegir el estilo: 'clasico' | 'urbano' | 'minimal' | 'fresco' | 'jk'
+const preset: keyof typeof themePresets = 'jk'
 
 export const siteConfig = {
-  name: 'Barbería El Clásico',
+  name: 'JK The Barber',
   description: 'Reserva tu cita en segundos.',
   // Para un cliente con estilo propio, copia un preset y cambia sus valores.
   theme: themePresets[preset] as Theme,
-  phone: '+34600000000',
+  phone: '+34621300223',
   // Formato internacional sin "+" ni espacios, como lo pide wa.me
-  whatsapp: '34600000000',
-  address: 'Calle Mayor 1, Madrid',
+  whatsapp: '34621300223',
+  address: 'C. Tres de Abril, 5, Molina de Segura',
   // Enlace para dejar reseña en Google (Google Maps > tu negocio > "Pedir reseñas"). Vacío = no se enseña.
   // El dueño también puede ponerlo en Ajustes > Reseñas (ese gana).
   googleReviewUrl: '',
@@ -149,12 +171,12 @@ export const siteConfig = {
   // Horario inicial. Luego el dueño lo cambia desde el panel (Ajustes > Horario).
   businessHours: {
     0: [],
-    1: [{ open: '10:00', close: '14:00' }, { open: '16:00', close: '20:00' }],
-    2: [{ open: '10:00', close: '14:00' }, { open: '16:00', close: '20:00' }],
-    3: [{ open: '10:00', close: '14:00' }, { open: '16:00', close: '20:00' }],
-    4: [{ open: '10:00', close: '14:00' }, { open: '16:00', close: '20:00' }],
-    5: [{ open: '10:00', close: '20:00' }],
-    6: [{ open: '10:00', close: '14:00' }],
+    1: [{ open: '10:00', close: '14:00' }, { open: '15:30', close: '21:00' }],
+    2: [{ open: '10:00', close: '14:00' }, { open: '15:30', close: '21:00' }],
+    3: [{ open: '10:00', close: '14:00' }, { open: '15:30', close: '21:00' }],
+    4: [{ open: '10:00', close: '14:00' }, { open: '15:30', close: '21:00' }],
+    5: [{ open: '10:00', close: '14:00' }, { open: '15:30', close: '21:00' }],
+    6: [{ open: '10:00', close: '15:00' }],
   } satisfies Record<Weekday, TimeWindow[]>,
 } as const
 
