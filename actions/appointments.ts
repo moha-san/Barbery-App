@@ -178,7 +178,9 @@ export async function cancelMyAppointment(id: string, telefono: string): Promise
   const { error } = await supabase.from('appointments').update({ status: 'cancelada' }).eq('id', id).eq('status', 'confirmada')
   if (error) return { ok: false, error: 'No se pudo cancelar. Inténtalo otra vez.' }
   try {
-    await sendCancelAlert(appt)
+    // Si hay gente en lista de espera para ese día, el aviso lo dice para que el barbero les escriba.
+    const { count } = await supabase.from('waitlist').select('id', { count: 'exact', head: true }).eq('fecha', localDateKey(appt.start_time))
+    await sendCancelAlert(appt, count ?? 0)
   } catch (e) {
     console.error('[cancelMyAppointment] aviso', e)
   }

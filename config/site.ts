@@ -132,6 +132,8 @@ export const siteConfig = {
   // Formato internacional sin "+" ni espacios, como lo pide wa.me
   whatsapp: '34600000000',
   address: 'Calle Mayor 1, Madrid',
+  // Enlace para dejar reseña en Google (Google Maps > tu negocio > "Pedir reseñas"). Vacío = no se enseña.
+  googleReviewUrl: '',
   timezone: 'Europe/Madrid',
   locale: 'es-ES',
   currency: 'EUR',

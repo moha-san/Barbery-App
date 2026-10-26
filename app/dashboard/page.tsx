@@ -10,7 +10,9 @@ import { AppointmentCard } from '@/components/dashboard/appointment-card'
 import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh'
 import { BrandMark } from '@/components/brand-mark'
 import { PushButton } from '@/components/push-button'
-import { ArrowLeftIcon, ArrowRightIcon, BanIcon, CalendarIcon, LogOutIcon, SettingsIcon } from '@/components/icons'
+import { ArrowLeftIcon, ArrowRightIcon, BanIcon, CalendarIcon, ChartIcon, ChatIcon, LogOutIcon, PlusIcon, SettingsIcon, UsersIcon } from '@/components/icons'
+import { WaitlistRemove } from '@/components/dashboard/waitlist-remove'
+import { generateWhatsAppFreeSlotLink } from '@/lib/whatsapp'
 import type { AppointmentWithRelations } from '@/types/database'
 import { getShopSettings } from '@/lib/shop'
 
@@ -82,6 +84,20 @@ export default async function DashboardPage({ searchParams }: Props) {
   const blocks = ((blocksRes.data ?? []) as unknown as { id: string; barber_id: string | null; start_time: string; end_time: string; motivo: string | null; barber: { nombre: string } | null }[])
     .filter((b) => !barbero || !b.barber_id || b.barber_id === barbero)
   const appointments = (data ?? []) as AppointmentWithRelations[]
+
+  // Visitas anteriores de cada cliente del día (para marcar "Nuevo" y enseñarlas en la ficha) y lista de espera.
+  const clientIds = Array.from(new Set(appointments.map((a) => a.client_id)))
+  const [pastRes, waitRes] = await Promise.all([
+    clientIds.length
+      ? supabase.from('appointments').select('client_id').in('client_id', clientIds).eq('status', 'completada').lt('start_time', dayStart.toISOString())
+      : Promise.resolve({ data: [] as { client_id: string }[] }),
+    supabase.from('waitlist').select('id, nombre, telefono, barber_id, barber:barbers(nombre), service:services(nombre)').eq('fecha', fecha).order('created_at'),
+  ])
+  const visits = new Map<string, number>()
+  for (const r of pastRes.data ?? []) visits.set(r.client_id, (visits.get(r.client_id) ?? 0) + 1)
+  const waitlist = ((waitRes.data ?? []) as unknown as { id: string; nombre: string; telefono: string; barber_id: string | null; barber: { nombre: string } | null; service: { nombre: string } | null }[])
+    .filter((w) => !barbero || !w.barber_id || w.barber_id === barbero)
+  const isAdmin = profile.rol === 'admin'
   const pendientes = appointments.filter((a) => a.status === 'confirmada').length
   const hechas = appointments.filter((a) => a.status === 'completada').length
   // Caja: lo cobrado (citas completadas) y lo que falta por cobrar (confirmadas).
@@ -164,6 +180,19 @@ export default async function DashboardPage({ searchParams }: Props) {
         </div>
       </dl>
 
+      <nav aria-label="Atajos" className={`mt-3 grid gap-3 ${isAdmin ? 'grid-cols-3' : 'grid-cols-2'}`}>
+        {[
+          { href: `/dashboard/nueva?${new URLSearchParams({ fecha, ...(barbero ? { barbero } : {}) })}`, label: 'Cita rápida', icon: <PlusIcon /> },
+          { href: '/dashboard/clientes', label: 'Clientes', icon: <UsersIcon /> },
+          ...(isAdmin ? [{ href: '/dashboard/resumen', label: 'Resumen del mes', icon: <ChartIcon /> }] : []),
+        ].map((t) => (
+          <Link key={t.label} href={t.href} className="flex min-h-[4.5rem] flex-col items-center justify-center gap-1.5 rounded-card border border-border bg-surface px-2 text-center text-xs font-semibold transition duration-200 hover:border-primary/50 [&_svg]:text-xl [&_svg]:text-primary">
+            {t.icon}
+            {t.label}
+          </Link>
+        ))}
+      </nav>
+
       {highlighted && (
         <p className="mt-6 flex flex-wrap items-baseline gap-x-2 rounded-card border border-primary/40 bg-primary/10 px-4 py-3 text-sm">
           <span className="eyebrow text-primary">{nowAppt ? 'Ahora' : `Próxima en ${minsToNext < 60 ? `${minsToNext} min` : `${Math.floor(minsToNext / 60)} h ${minsToNext % 60} min`}`}</span>
@@ -198,7 +227,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         <ol className="grid gap-2">
           {[
             ...appointments.map((a) => ({ start: a.start_time, node: (
-              <AppointmentCard key={a.id} appointment={a} highlight={a.id === highlighted?.id ? (nowAppt ? 'Ahora' : 'Siguiente') : undefined} />
+              <AppointmentCard key={a.id} appointment={a} visits={visits.get(a.client_id) ?? 0} highlight={a.id === highlighted?.id ? (nowAppt ? 'Ahora' : 'Siguiente') : undefined} />
             ) })),
             ...blocks.map((b) => ({ start: b.start_time, node: (
               <li key={b.id} className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-3 rounded-card border border-dashed border-border px-4 py-3 text-sm text-muted">
@@ -215,6 +244,31 @@ export default async function DashboardPage({ searchParams }: Props) {
             .map((x) => x.node)}
         </ol>
       </section>
+
+      {waitlist.length > 0 && (
+        <section aria-labelledby="espera" className="mt-10 grid gap-3">
+          <div>
+            <h2 id="espera" className="text-xl">Lista de espera</h2>
+            <p className="mt-1 text-sm text-muted">Quieren hueco este día. Si alguien cancela, escríbeles.</p>
+          </div>
+          <ul className="grid gap-2">
+            {waitlist.map((w) => (
+              <li key={w.id} className="flex items-center gap-3 rounded-card border border-border bg-surface px-4 py-3">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold">{w.nombre}</span>
+                  <span className="block truncate text-sm text-muted">
+                    {w.service?.nombre ?? 'Cualquier servicio'} · {w.barber?.nombre ?? 'Cualquier barbero'}
+                  </span>
+                </span>
+                <a href={generateWhatsAppFreeSlotLink(w.telefono, w.nombre, formatDateLong(dayStart))} target="_blank" rel="noopener noreferrer" className="btn-ghost h-10 px-3" aria-label={`Escribir a ${w.nombre}`}>
+                  <ChatIcon className="text-whatsapp" /> <span className="hidden sm:inline">Avisar</span>
+                </a>
+                <WaitlistRemove id={w.id} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   )
 }

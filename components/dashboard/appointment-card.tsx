@@ -1,10 +1,11 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { remindClient, updateAppointmentStatus } from '@/actions/appointments'
 import { formatPrice, formatTime } from '@/lib/format'
-import { generateWhatsAppReminderLink } from '@/lib/whatsapp'
-import { BellIcon, ChatIcon, CheckIcon, ChevronDownIcon, PhoneIcon, XIcon } from '@/components/icons'
+import { generateWhatsAppReminderLink, generateWhatsAppReviewLink } from '@/lib/whatsapp'
+import { BellIcon, ChatIcon, CheckIcon, ChevronDownIcon, PhoneIcon, StarIcon, UsersIcon, XIcon } from '@/components/icons'
 import type { AppointmentStatus, AppointmentWithRelations } from '@/types/database'
 
 // Color por estado: punto + etiqueta.
@@ -15,10 +16,11 @@ const statusStyle: Record<AppointmentStatus, { text: string; badge: string; dot:
   cancelada: { text: 'Cancelada', badge: 'bg-text/10 text-muted', dot: 'bg-muted' },
 }
 
-type Props = { appointment: AppointmentWithRelations; highlight?: 'Ahora' | 'Siguiente' }
+// visits = cortes que ya tenía antes de este día (0 = cliente nuevo).
+type Props = { appointment: AppointmentWithRelations; highlight?: 'Ahora' | 'Siguiente'; visits?: number }
 
 // Fila compacta de la agenda. Al tocarla se abren las acciones (llamar, WhatsApp, completar…).
-export function AppointmentCard({ appointment: a, highlight }: Props) {
+export function AppointmentCard({ appointment: a, highlight, visits }: Props) {
   const [open, setOpen] = useState(!!highlight)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -27,6 +29,7 @@ export function AppointmentCard({ appointment: a, highlight }: Props) {
   const phone = a.client?.telefono
   const done = a.status !== 'confirmada'
   const panelId = `acciones-${a.id}`
+  const review = phone && a.client ? generateWhatsAppReviewLink(phone, a.client.nombre) : null
 
   function setStatus(next: AppointmentStatus) {
     setError(null)
@@ -61,7 +64,10 @@ export function AppointmentCard({ appointment: a, highlight }: Props) {
         </span>
         <span className="min-w-0">
           {highlight && <span className="eyebrow block text-[10px] text-primary">{highlight}</span>}
-          <span className="block truncate font-semibold">{a.client?.nombre ?? 'Cliente'}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-semibold">{a.client?.nombre ?? 'Cliente'}</span>
+            {visits === 0 && <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">Nuevo</span>}
+          </span>
           <span className="block truncate text-sm text-muted">
             {a.service?.nombre}
             {a.service && <span className="hidden sm:inline"> · {formatPrice(a.service.precio)}</span>} · {a.barber?.nombre}
@@ -106,6 +112,16 @@ export function AppointmentCard({ appointment: a, highlight }: Props) {
             <button type="button" disabled={pending} onClick={() => setStatus('confirmada')} className="btn-ghost col-span-2 h-10">
               Deshacer
             </button>
+          )}
+          {a.status === 'completada' && review && (
+            <a href={review} target="_blank" rel="noopener noreferrer" className="btn-ghost h-10">
+              <StarIcon className="text-accent" /> Pedir reseña
+            </a>
+          )}
+          {a.client && (
+            <Link href={`/dashboard/clientes/${a.client.id}`} className="btn-ghost h-10">
+              <UsersIcon /> Ficha{visits ? ` · ${visits} ${visits === 1 ? 'visita' : 'visitas'}` : ''}
+            </Link>
           )}
           {error && <p role="alert" className="col-span-2 text-sm text-danger sm:col-span-4">{error}</p>}
         </div>

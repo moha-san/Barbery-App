@@ -72,3 +72,15 @@ export const BanIcon = (p: SVGProps<SVGSVGElement>) => (
 export const ChevronDownIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}><path d="m6 9 6 6 6-6" /></Icon>
 )
+export const UsersIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" /></Icon>
+)
+export const ChartIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M3 3v18h18" /><path d="M18 17V9M13 17V5M8 17v-3" /></Icon>
+)
+export const StarIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z" /></Icon>
+)
+export const SearchIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></Icon>
+)
