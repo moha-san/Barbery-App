@@ -51,3 +51,9 @@ export const LogOutIcon = (p: SVGProps<SVGSVGElement>) => (
 export const BellIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" /></Icon>
 )
+export const DownloadIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></Icon>
+)
+export const ShareIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></Icon>
+)
