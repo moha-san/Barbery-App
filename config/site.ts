@@ -5,7 +5,7 @@ export type TimeWindow = { open: string; close: string } // "HH:mm" en hora loca
 
 // ─── Aspecto visual ────────────────────────────────────────────────────────────
 // Tipografías disponibles (se cargan con next/font en lib/fonts.ts).
-export type FontKey = 'playfair' | 'manrope' | 'unbounded' | 'inter' | 'instrumentSerif' | 'dmSans'
+export type FontKey = 'playfair' | 'manrope' | 'unbounded' | 'inter' | 'instrumentSerif' | 'dmSans' | 'bricolage' | 'nunitoSans'
 
 export type Theme = {
   mode: 'dark' | 'light'
@@ -96,10 +96,32 @@ export const themePresets = {
     heroImage: '/brand/hero-minimal.svg',
     tagline: 'Cortes precisos, sin prisas. Un sitio tranquilo para cuidarte.',
   },
+  // Barbería de barrio: blanco y verde, redondeado y cercano.
+  fresco: {
+    mode: 'light',
+    colors: {
+      primary: '#0f6e56',
+      onPrimary: '#ffffff',
+      accent: '#b4561a',
+      background: '#ffffff',
+      surface: '#f3f8f6',
+      text: '#10231d',
+      muted: '#52645b',
+      border: '#d9e6e0',
+      success: '#1a7a43',
+      danger: '#c2372b',
+      whatsapp: '#178a45',
+    },
+    fonts: { display: 'bricolage', body: 'nunitoSans' },
+    radius: 18,
+    logo: null,
+    heroImage: '/brand/hero-fresco.svg',
+    tagline: 'Tu barbería de confianza, a dos calles de casa.',
+  },
 } satisfies Record<string, Theme>
 
-// 👇 Cambia esta línea para elegir el estilo: 'clasico' | 'urbano' | 'minimal'
-const preset: keyof typeof themePresets = 'clasico'
+// 👇 Cambia esta línea para elegir el estilo: 'clasico' | 'urbano' | 'minimal' | 'fresco'
+const preset: keyof typeof themePresets = 'fresco'
 
 export const siteConfig = {
   name: 'Barbería El Clásico',
@@ -119,6 +141,7 @@ export const siteConfig = {
   bookingWindowDays: 30,
   // Avisos al móvil del cliente: cuántas horas antes de la cita (ej. [24, 1] = un día antes y una hora antes)
   reminderHoursBefore: [24, 1],
+  // Horario inicial. Luego el dueño lo cambia desde el panel (Ajustes > Horario).
   businessHours: {
     0: [],
     1: [{ open: '10:00', close: '14:00' }, { open: '16:00', close: '20:00' }],

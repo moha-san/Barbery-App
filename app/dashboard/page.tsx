@@ -10,8 +10,9 @@ import { AppointmentCard } from '@/components/dashboard/appointment-card'
 import { RealtimeRefresh } from '@/components/dashboard/realtime-refresh'
 import { BrandMark } from '@/components/brand-mark'
 import { PushButton } from '@/components/push-button'
-import { ArrowLeftIcon, ArrowRightIcon, CalendarIcon, LogOutIcon } from '@/components/icons'
+import { ArrowLeftIcon, ArrowRightIcon, BanIcon, CalendarIcon, LogOutIcon, SettingsIcon } from '@/components/icons'
 import type { AppointmentWithRelations } from '@/types/database'
+import { getShopSettings } from '@/lib/shop'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,7 +68,19 @@ export default async function DashboardPage({ searchParams }: Props) {
     .neq('status', 'cancelada')
     .order('start_time')
   if (barbero) query = query.eq('barber_id', barbero)
-  const { data, error } = await query
+  const [{ data, error }, blocksRes, settings] = await Promise.all([
+    query,
+    supabase
+      .from('time_off')
+      .select('id, barber_id, start_time, end_time, motivo, barber:barbers(nombre)')
+      .lt('start_time', dayEnd.toISOString())
+      .gt('end_time', dayStart.toISOString())
+      .order('start_time'),
+    getShopSettings(),
+  ])
+  // Bloqueos del día (vacaciones, descansos). Si la tabla aún no existe, no se enseña nada.
+  const blocks = ((blocksRes.data ?? []) as unknown as { id: string; barber_id: string | null; start_time: string; end_time: string; motivo: string | null; barber: { nombre: string } | null }[])
+    .filter((b) => !barbero || !b.barber_id || b.barber_id === barbero)
   const appointments = (data ?? []) as AppointmentWithRelations[]
   const pendientes = appointments.filter((a) => a.status === 'confirmada').length
   const hechas = appointments.filter((a) => a.status === 'completada').length
@@ -89,12 +102,15 @@ export default async function DashboardPage({ searchParams }: Props) {
     `btn h-10 shrink-0 rounded-full border px-4 ${active ? 'border-primary bg-primary text-on-primary' : 'border-border bg-surface text-text hover:border-text/30'}`
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pb-16 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8">
+    <main className="mx-auto max-w-3xl px-4 pb-16 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8">
       <RealtimeRefresh />
       <header className="flex items-center gap-3 border-b border-border pb-4">
-        <BrandMark size={40} />
+        <BrandMark size={40} logo={settings.logoUrl} />
         <p className="font-display min-w-0 flex-1 truncate text-lg">{siteConfig.name}</p>
         <PushButton kind="staff" label="Activar avisos" doneLabel="Avisos activados" className="btn-ghost h-11 px-3" />
+        <Link href="/dashboard/ajustes" className="btn-ghost h-11 px-3" aria-label="Ajustes">
+          <SettingsIcon /> <span className="hidden sm:inline">Ajustes</span>
+        </Link>
         <form action={logout}>
           <button className="btn-ghost h-11 px-3" aria-label="Salir">
             <LogOutIcon /> <span className="hidden sm:inline">Salir</span>
@@ -133,21 +149,18 @@ export default async function DashboardPage({ searchParams }: Props) {
         </nav>
       )}
 
-      <dl className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          ['Citas', appointments.length],
-          ['Pendientes', pendientes],
-          ['Hechas', hechas],
-        ].map(([label, value]) => (
-          <div key={label} className="card p-4">
-            <dt className="text-xs font-medium uppercase tracking-wider text-muted">{label}</dt>
-            <dd className="font-display mt-1 text-3xl tabular-nums">{value}</dd>
-          </div>
-        ))}
-        <div className="card border-success/40 p-4">
+      <dl className="mt-6 grid grid-cols-2 gap-3">
+        <div className="card p-4">
           <dt className="text-xs font-medium uppercase tracking-wider text-muted">{isToday ? 'Caja de hoy' : 'Caja del día'}</dt>
           <dd className="font-display mt-1 text-3xl tabular-nums text-success">{formatPrice(cobrado)}</dd>
           {porCobrar > 0 && <dd className="mt-1 text-xs text-muted">+ {formatPrice(porCobrar)} por cobrar</dd>}
+        </div>
+        <div className="card p-4">
+          <dt className="text-xs font-medium uppercase tracking-wider text-muted">Citas</dt>
+          <dd className="font-display mt-1 text-3xl tabular-nums">{appointments.length}</dd>
+          <dd className="mt-1 text-xs text-muted">
+            {pendientes} por venir · {hechas} {hechas === 1 ? 'hecha' : 'hechas'}
+          </dd>
         </div>
       </dl>
 
@@ -163,26 +176,44 @@ export default async function DashboardPage({ searchParams }: Props) {
         </p>
       )}
 
-      <section className="mt-8 grid gap-4 md:grid-cols-2">
+      <section className="mt-8 grid gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-xl">Agenda</h2>
+          <Link href="/dashboard/ajustes#descansos" className="btn-ghost h-10 px-3 text-xs">
+            <BanIcon /> Bloquear hueco
+          </Link>
+        </div>
         {error && (
-          <p role="alert" className="rounded-card border border-danger/30 bg-danger/10 p-4 text-sm text-danger md:col-span-2">
+          <p role="alert" className="rounded-card border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
             No se pudo cargar la agenda. Recarga la página en un momento.
           </p>
         )}
-        {!error && !appointments.length && (
-          <div className="grid justify-items-center gap-2 rounded-card border border-dashed border-border p-10 text-center md:col-span-2">
+        {!error && !appointments.length && !blocks.length && (
+          <div className="grid justify-items-center gap-2 rounded-card border border-dashed border-border p-10 text-center">
             <CalendarIcon className="text-3xl text-muted" />
             <p className="font-display text-xl">Día libre</p>
             <p className="text-sm text-muted">No hay citas este día. Las nuevas reservas aparecerán aquí solas.</p>
           </div>
         )}
-        {appointments.map((a) => (
-          <AppointmentCard
-            key={a.id}
-            appointment={a}
-            highlight={a.id === highlighted?.id ? (nowAppt ? 'Ahora' : 'Siguiente') : undefined}
-          />
-        ))}
+        <ol className="grid gap-2">
+          {[
+            ...appointments.map((a) => ({ start: a.start_time, node: (
+              <AppointmentCard key={a.id} appointment={a} highlight={a.id === highlighted?.id ? (nowAppt ? 'Ahora' : 'Siguiente') : undefined} />
+            ) })),
+            ...blocks.map((b) => ({ start: b.start_time, node: (
+              <li key={b.id} className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-3 rounded-card border border-dashed border-border px-4 py-3 text-sm text-muted">
+                <span className="tabular-nums">{new Date(b.start_time) <= dayStart ? '—' : formatTime(b.start_time)}</span>
+                <span className="min-w-0 truncate">
+                  <span className="font-semibold text-text">Bloqueado</span>
+                  {new Date(b.end_time) < dayEnd ? ` hasta las ${formatTime(b.end_time)}` : ' todo el día'}
+                  {b.motivo ? ` · ${b.motivo}` : ''} · {b.barber?.nombre ?? 'Toda la barbería'}
+                </span>
+              </li>
+            ) })),
+          ]
+            .sort((x, y) => Date.parse(x.start) - Date.parse(y.start))
+            .map((x) => x.node)}
+        </ol>
       </section>
     </main>
   )

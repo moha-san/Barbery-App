@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d7efe6"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <clipPath id="pole"><rect x="560" y="90" width="110" height="440" rx="55"/></clipPath>
+  </defs>
+  <rect width="800" height="1000" fill="url(#g)"/>
+  <circle cx="640" cy="200" r="260" fill="#c4e6d9" fill-opacity=".55"/>
+  <circle cx="120" cy="140" r="90" fill="#f6d9c4" fill-opacity=".7"/>
+  <g clip-path="url(#pole)">
+    <rect x="560" y="90" width="110" height="440" fill="#ffffff"/>
+    <g fill="#0f6e56">
+      <path d="M520 120 l200 -120 v60 l-200 120z"/>
+      <path d="M520 240 l200 -120 v60 l-200 120z"/>
+      <path d="M520 360 l200 -120 v60 l-200 120z"/>
+      <path d="M520 480 l200 -120 v60 l-200 120z"/>
+      <path d="M520 600 l200 -120 v60 l-200 120z"/>
+    </g>
+    <g fill="#b4561a" fill-opacity=".9">
+      <path d="M520 180 l200 -120 v24 l-200 120z"/>
+      <path d="M520 420 l200 -120 v24 l-200 120z"/>
+    </g>
+  </g>
+  <rect x="560" y="90" width="110" height="440" rx="55" fill="none" stroke="#10231d" stroke-opacity=".15" stroke-width="3"/>
+  <rect x="545" y="60" width="140" height="40" rx="20" fill="#10231d" fill-opacity=".85"/>
+  <rect x="545" y="520" width="140" height="40" rx="20" fill="#10231d" fill-opacity=".85"/>
+  <g fill="none" stroke="#0f6e56" stroke-width="10" stroke-linecap="round" stroke-opacity=".18">
+    <circle cx="200" cy="420" r="46"/>
+    <circle cx="300" cy="420" r="46"/>
+    <path d="M232 386 L400 250 M268 386 L100 250"/>
+  </g>
+</svg>
