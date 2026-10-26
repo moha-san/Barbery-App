@@ -10,7 +10,7 @@ import type { AppointmentWithRelations } from '@/types/database'
 // generateWhatsAppReminderLink vive en lib/whatsapp.ts porque la usa el dashboard en el cliente.
 
 // Aviso al móvil del dueño y los barberos que activaron los avisos en el panel.
-export async function sendImmediateAlert(appointment: AppointmentWithRelations): Promise<void> {
+async function sendStaffAlert(payload: { title: string; body: string; url: string; tag: string }): Promise<void> {
   const supabase = createAdminClient()
   const { data: staff } = await supabase.from('users').select('id').in('rol', ['admin', 'barbero'])
   if (!staff?.length) return
@@ -18,11 +18,24 @@ export async function sendImmediateAlert(appointment: AppointmentWithRelations):
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
     .in('user_id', staff.map((u) => u.id))
+  await sendPush(subs ?? [], payload)
+}
 
+export async function sendImmediateAlert(appointment: AppointmentWithRelations): Promise<void> {
   const when = `${formatDateLong(appointment.start_time)} a las ${formatTime(appointment.start_time)}`
-  await sendPush(subs ?? [], {
+  await sendStaffAlert({
     title: `Nueva cita: ${appointment.client?.nombre ?? 'cliente'}`,
     body: `${appointment.service?.nombre ?? 'Servicio'} con ${appointment.barber?.nombre ?? '-'} · ${when}`,
+    url: `/dashboard?fecha=${localDateKey(appointment.start_time)}`,
+    tag: `cita-${appointment.id}`,
+  })
+}
+
+// El cliente canceló desde su móvil: el hueco queda libre.
+export async function sendCancelAlert(appointment: { id: string; start_time: string; client: { nombre: string } | null; barber: { nombre: string } | null }): Promise<void> {
+  await sendStaffAlert({
+    title: `Cita cancelada: ${appointment.client?.nombre ?? 'cliente'}`,
+    body: `${formatDateLong(appointment.start_time)} a las ${formatTime(appointment.start_time)} con ${appointment.barber?.nombre ?? '-'}. El hueco ya está libre.`,
     url: `/dashboard?fecha=${localDateKey(appointment.start_time)}`,
     tag: `cita-${appointment.id}`,
   })

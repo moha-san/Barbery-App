@@ -3,13 +3,14 @@
 import { useMemo } from 'react'
 import { addDays, format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { siteConfig, type Weekday } from '@/config/site'
+import { siteConfig } from '@/config/site'
+import type { WeekHours } from '@/lib/hours'
 import { toLocal } from '@/lib/format'
 
-type Props = { selected: string | null; onSelect: (dateKey: string) => void }
+type Props = { hours: WeekHours; selected: string | null; onSelect: (dateKey: string) => void }
 
 // Tira de días en la zona horaria del local (no la del móvil).
-export function DatePicker({ selected, onSelect }: Props) {
+export function DatePicker({ hours, selected, onSelect }: Props) {
   const days = useMemo(() => {
     const today = toLocal(new Date())
     return Array.from({ length: siteConfig.bookingWindowDays + 1 }, (_, i) => {
@@ -19,10 +20,10 @@ export function DatePicker({ selected, onSelect }: Props) {
         top: i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : format(d, 'EEE', { locale: es }),
         day: format(d, 'd'),
         month: format(d, 'MMM', { locale: es }),
-        closed: siteConfig.businessHours[d.getDay() as Weekday].length === 0,
+        closed: (hours[d.getDay()] ?? []).length === 0,
       }
     })
-  }, [])
+  }, [hours])
 
   return (
     <div role="radiogroup" aria-label="Día" className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:px-0">

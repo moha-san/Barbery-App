@@ -57,3 +57,18 @@ export const DownloadIcon = (p: SVGProps<SVGSVGElement>) => (
 export const ShareIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}><path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></Icon>
 )
+export const PlusIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M12 5v14M5 12h14" /></Icon>
+)
+export const TrashIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="M3 6h18M8 6V4h8v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></Icon>
+)
+export const ImageIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" /></Icon>
+)
+export const BanIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="m5.7 5.7 12.6 12.6" /></Icon>
+)
+export const ChevronDownIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}><path d="m6 9 6 6 6-6" /></Icon>
+)

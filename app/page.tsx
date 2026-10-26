@@ -2,31 +2,14 @@
 import { SiteHeader } from '@/components/site-header'
 import { BookingFlow } from '@/components/booking/booking-flow'
 import { ChatIcon, ClockIcon, MapPinIcon, NavigationIcon, PhoneIcon } from '@/components/icons'
-import { siteConfig, type Weekday } from '@/config/site'
-import { toLocal } from '@/lib/format'
+import { siteConfig } from '@/config/site'
+import { toLocal, whenLabel } from '@/lib/format'
 import { shopWhatsAppLink } from '@/lib/whatsapp'
 import { createSessionClient } from '@/lib/supabase/server'
+import { openStatus } from '@/lib/hours'
+import { getGallery, getShopSettings, nextFreeSlot } from '@/lib/shop'
 
 export const revalidate = 60
-
-const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
-
-// "Abierto hasta las 20:00" / "Cerrado · abre mañana a las 10:00"
-function openStatus(): { open: boolean; text: string } {
-  const now = toLocal(new Date())
-  const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-  const today = siteConfig.businessHours[now.getDay() as Weekday]
-  const current = today.find((w) => hhmm >= w.open && hhmm < w.close)
-  if (current) return { open: true, text: `Abierto hasta las ${current.close}` }
-  const later = today.find((w) => hhmm < w.open)
-  if (later) return { open: false, text: `Cerrado · abre hoy a las ${later.open}` }
-  for (let i = 1; i <= 7; i++) {
-    const day = (now.getDay() + i) % 7
-    const next = siteConfig.businessHours[day as Weekday][0]
-    if (next) return { open: false, text: `Cerrado · abre ${i === 1 ? 'mañana' : `el ${DAYS[day]}`} a las ${next.open}` }
-  }
-  return { open: false, text: 'Cerrado' }
-}
 
 const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siteConfig.address)}`
 
@@ -36,7 +19,12 @@ export default async function HomePage() {
     supabase.from('barbers').select('*').eq('activo', true).order('nombre'),
     supabase.from('services').select('*').eq('activo', true).order('precio'),
   ])
-  const status = openStatus()
+  const [settings, gallery] = await Promise.all([getShopSettings(), getGallery()])
+  const now = toLocal(new Date())
+  const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const status = openStatus(settings.hours, now.getDay(), hhmm)
+  const shortest = Math.min(...(services.data ?? []).map((s) => s.duracion_min))
+  const nextFree = Number.isFinite(shortest) ? await nextFreeSlot((barbers.data ?? []).map((b) => b.id), shortest) : null
 
   const quick = [
     { href: shopWhatsAppLink('Hola, quería información sobre una cita.'), label: 'WhatsApp', icon: <ChatIcon className="text-whatsapp" />, external: true },
@@ -46,12 +34,12 @@ export default async function HomePage() {
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader logo={settings.logoUrl} />
       <main className="mx-auto max-w-6xl pb-40 lg:grid lg:pb-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,36rem)] lg:gap-16 lg:px-8 lg:pt-8">
         <section className="relative isolate overflow-hidden lg:sticky lg:top-24 lg:flex lg:h-[calc(100dvh-8rem)] lg:min-h-[34rem] lg:flex-col lg:justify-end lg:rounded-card lg:border lg:border-border">
-          <img src={siteConfig.theme.heroImage} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
+          <img src={settings.heroUrl} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
           <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/75 to-background/10" />
-          <div className="px-4 pb-8 pt-32 lg:p-10">
+          <div className="px-4 pb-8 pt-16 lg:p-10">
             <p className="eyebrow animate-fade-up">Reserva online</p>
             <h1 className="mt-3 animate-fade-up text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">{siteConfig.name}</h1>
             <p className="mt-4 max-w-md animate-fade-up text-base leading-relaxed text-muted">{siteConfig.theme.tagline}</p>
@@ -65,6 +53,11 @@ export default async function HomePage() {
                 <MapPinIcon /> {siteConfig.address}
               </span>
             </div>
+
+            <a href="#reservar" className="btn-primary mt-6 h-14 w-full text-base sm:w-auto sm:px-8">
+              Reservar cita
+              {nextFree && <span className="font-normal opacity-90">· {whenLabel(nextFree)}</span>}
+            </a>
 
             <nav aria-label="Contacto" className="mt-6 grid grid-cols-3 gap-2">
               {quick.map((q) => (
@@ -89,7 +82,18 @@ export default async function HomePage() {
               <p className="mt-2 text-sm text-muted">Llámanos o escríbenos por WhatsApp y te buscamos hueco.</p>
             </div>
           ) : (
-            <BookingFlow barbers={barbers.data} services={services.data} />
+            <BookingFlow barbers={barbers.data} services={services.data} hours={settings.hours} nextFree={nextFree} />
+          )}
+
+          {gallery.length > 0 && (
+            <section aria-labelledby="galeria" className="mt-14">
+              <h2 id="galeria" className="text-2xl">Nuestro trabajo</h2>
+              <div className="-mx-4 mt-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-3 lg:px-0">
+                {gallery.map((g) => (
+                  <img key={g.id} src={g.url} alt="Corte hecho en la barbería" loading="lazy" className="aspect-[4/5] w-48 shrink-0 snap-start rounded-card border border-border object-cover lg:w-full" />
+                ))}
+              </div>
+            </section>
           )}
         </div>
       </main>

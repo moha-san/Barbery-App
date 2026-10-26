@@ -2,13 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { addDays } from 'date-fns'
-import { TZDate } from '@date-fns/tz'
 import { z } from 'zod'
 import { siteConfig } from '@/config/site'
-import { computeSlots } from '@/lib/slots'
+import { freeSlots } from '@/lib/shop'
 import { localDateKey } from '@/lib/format'
 import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
-import { sendImmediateAlert, sendManualReminder } from '@/actions/notifications'
+import { sendCancelAlert, sendImmediateAlert, sendManualReminder } from '@/actions/notifications'
 import type { AppointmentWithRelations } from '@/types/database'
 
 export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; error: string }
@@ -16,38 +15,10 @@ export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; e
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
 const uuidSchema = z.string().uuid()
 
-function dayBounds(date: string) {
-  const [y, m, d] = date.split('-').map(Number)
-  const start = new TZDate(y, m - 1, d, 0, 0, siteConfig.timezone)
-  return { start, end: addDays(start, 1) }
-}
-
 function isBookableDate(date: string): boolean {
   const today = localDateKey(new Date())
   const last = localDateKey(addDays(new Date(), siteConfig.bookingWindowDays))
   return date >= today && date <= last
-}
-
-async function freeSlots(date: string, barberId: string, durationMin: number): Promise<string[]> {
-  const { start, end } = dayBounds(date)
-  const { data, error } = await createAdminClient()
-    .from('appointments')
-    .select('start_time, end_time')
-    .eq('barber_id', barberId)
-    .neq('status', 'cancelada')
-    .lt('start_time', end.toISOString())
-    .gt('end_time', start.toISOString())
-  if (error) throw new Error(error.message)
-
-  return computeSlots({
-    date,
-    windowsByWeekday: siteConfig.businessHours,
-    timezone: siteConfig.timezone,
-    durationMin,
-    stepMin: siteConfig.slotStepMin,
-    busy: data.map((a) => ({ start: a.start_time, end: a.end_time })),
-    now: new Date(),
-  })
 }
 
 export async function getAvailableSlots(
@@ -183,4 +154,34 @@ export async function remindClient(id: string): Promise<ActionResult> {
     console.error('[remindClient]', e)
     return { ok: false, error: 'No se pudo enviar el aviso' }
   }
+}
+
+const normalizePhone = (v: string) => v.replace(/[\s\-().]/g, '')
+
+// El cliente cancela su cita desde el móvil. Sin cuenta: se comprueba con el teléfono con el que reservó.
+export async function cancelMyAppointment(id: string, telefono: string): Promise<ActionResult> {
+  if (!uuidSchema.safeParse(id).success || !telefono) return { ok: false, error: 'Datos inválidos' }
+  const supabase = createAdminClient()
+  const { data: a } = await supabase
+    .from('appointments')
+    .select('id, start_time, status, client:users(nombre, telefono), barber:barbers(nombre)')
+    .eq('id', id)
+    .maybeSingle()
+  const appt = a as unknown as { id: string; start_time: string; status: string; client: { nombre: string; telefono: string } | null; barber: { nombre: string } | null } | null
+  if (!appt || !appt.client || normalizePhone(appt.client.telefono) !== normalizePhone(telefono)) {
+    return { ok: false, error: 'No encontramos esa cita. Escríbenos por WhatsApp.' }
+  }
+  if (appt.status === 'cancelada') return { ok: true, data: undefined }
+  if (appt.status !== 'confirmada' || new Date(appt.start_time).getTime() <= Date.now()) {
+    return { ok: false, error: 'Esta cita ya no se puede cancelar desde aquí. Llámanos.' }
+  }
+  const { error } = await supabase.from('appointments').update({ status: 'cancelada' }).eq('id', id).eq('status', 'confirmada')
+  if (error) return { ok: false, error: 'No se pudo cancelar. Inténtalo otra vez.' }
+  try {
+    await sendCancelAlert(appt)
+  } catch (e) {
+    console.error('[cancelMyAppointment] aviso', e)
+  }
+  revalidatePath('/dashboard')
+  return { ok: true, data: undefined }
 }

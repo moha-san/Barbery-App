@@ -9,8 +9,8 @@ export function initials(name: string) {
 }
 
 // Logo del tema o, si no hay, un monograma con las iniciales en la letra de títulos.
-export function BrandMark({ size = 40, className = '' }: { size?: number; className?: string }) {
-  const { logo } = siteConfig.theme
+// logo: el que sube el dueño en Ajustes; si no se pasa, el del tema.
+export function BrandMark({ size = 40, className = '', logo = siteConfig.theme.logo }: { size?: number; className?: string; logo?: string | null }) {
   if (logo) return <img src={logo} alt="" width={size} height={size} className={`shrink-0 rounded-full object-cover ${className}`} />
   return (
     <span

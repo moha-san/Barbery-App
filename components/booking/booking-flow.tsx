@@ -1,13 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { getAvailableSlots } from '@/actions/appointments'
+import { cancelMyAppointment, getAvailableSlots } from '@/actions/appointments'
 import { siteConfig } from '@/config/site'
 import { buildIcs, googleCalendarUrl, type CalendarEvent } from '@/lib/calendar'
-import { formatDateLong, formatPrice, formatTime } from '@/lib/format'
+import { formatDateLong, formatPrice, formatTime, whenLabel } from '@/lib/format'
 import { shopWhatsAppLink } from '@/lib/whatsapp'
 import { CalendarIcon, ChatIcon, CheckIcon, ScissorsIcon } from '@/components/icons'
 import type { Barber, Service } from '@/types/database'
+import type { WeekHours } from '@/lib/hours'
+import { RESCHEDULE_EVENT, savedPhone, type MyAppointment } from '@/components/next-appointment'
 import { ServicePicker } from './service-picker'
 import { BarberPicker } from './barber-picker'
 import { DatePicker } from './date-picker'
@@ -15,7 +17,7 @@ import { SlotGrid } from './slot-grid'
 import { ConfirmDialog } from './confirm-dialog'
 import { PushButton } from '@/components/push-button'
 
-type Props = { barbers: Barber[]; services: Service[] }
+type Props = { barbers: Barber[]; services: Service[]; hours: WeekHours; nextFree: string | null }
 
 const STEPS = ['Servicio', 'Barbero', 'Día', 'Hora']
 
@@ -37,7 +39,7 @@ function Step({ n, title, done, innerRef, children }: { n: number; title: string
   )
 }
 
-export function BookingFlow({ barbers, services }: Props) {
+export function BookingFlow({ barbers, services, hours, nextFree }: Props) {
   const [service, setService] = useState<Service | null>(null)
   // Con un solo barbero no tiene sentido preguntar.
   const [barber, setBarber] = useState<Barber | null>(barbers.length === 1 ? barbers[0] : null)
@@ -48,6 +50,21 @@ export function BookingFlow({ barbers, services }: Props) {
   const [slot, setSlot] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [booked, setBooked] = useState<{ start: string; id: string } | null>(null)
+  // Cita que el cliente está cambiando: al reservar la nueva, se cancela esta.
+  const [reschedule, setReschedule] = useState<MyAppointment | null>(null)
+
+  useEffect(() => {
+    const onChange = (e: Event) => {
+      const old = (e as CustomEvent<MyAppointment>).detail
+      setReschedule(old)
+      setBooked(null)
+      setService(services.find((s) => s.id === old.serviceId) ?? null)
+      setBarber(barbers.find((b) => b.id === old.barberId) ?? (barbers.length === 1 ? barbers[0] : null))
+      setDateKey(null)
+    }
+    window.addEventListener(RESCHEDULE_EVENT, onChange)
+    return () => window.removeEventListener(RESCHEDULE_EVENT, onChange)
+  }, [barbers, services])
 
   const barberRef = useRef<HTMLElement>(null)
   const dayRef = useRef<HTMLElement>(null)
@@ -93,7 +110,19 @@ export function BookingFlow({ barbers, services }: Props) {
   const current = !service ? 0 : !barber ? 1 : !dateKey ? 2 : 3
 
   return (
-    <div className="grid gap-12">
+    <div id="reservar" className="grid scroll-mt-24 gap-12">
+      {reschedule && (
+        <div role="status" className="flex items-start gap-3 rounded-card border border-accent/40 bg-accent/10 p-4 text-sm">
+          <CalendarIcon className="mt-0.5 shrink-0 text-lg text-accent" />
+          <p className="min-w-0 flex-1">
+            <span className="font-semibold">Cambiando tu cita del {formatDateLong(reschedule.start)} a las {formatTime(reschedule.start)}.</span>{' '}
+            Elige el nuevo día y hora. La cita antigua se cancela sola al reservar la nueva.
+          </p>
+          <button type="button" onClick={() => setReschedule(null)} className="shrink-0 font-semibold underline underline-offset-4">
+            No cambiar
+          </button>
+        </div>
+      )}
       <ol className="grid grid-cols-4 gap-2" aria-label="Progreso">
         {STEPS.map((label, i) => (
           <li key={label} className="grid gap-2" aria-current={i === current ? 'step' : undefined}>
@@ -132,6 +161,7 @@ export function BookingFlow({ barbers, services }: Props) {
       {service && barber && (
         <Step n={barbers.length > 1 ? 3 : 2} title="Elige día" done={!!dateKey} innerRef={dayRef}>
           <DatePicker
+            hours={hours}
             selected={dateKey}
             onSelect={(d) => {
               setDateKey(d)
@@ -154,6 +184,30 @@ export function BookingFlow({ barbers, services }: Props) {
             }}
           />
         </Step>
+      )}
+
+      {!service && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/90 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-soft backdrop-blur-xl lg:hidden">
+          <div className="mx-auto flex max-w-xl items-center gap-3">
+            <p className="min-w-0 flex-1 text-sm">
+              {nextFree ? (
+                <>
+                  <span className="block text-xs text-muted">Próximo hueco libre</span>
+                  <span className="block truncate font-semibold first-letter:uppercase">{whenLabel(nextFree)}</span>
+                </>
+              ) : (
+                <span className="font-semibold">Reserva en 1 minuto</span>
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={() => document.getElementById('reservar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="btn-primary h-12 px-6 text-base"
+            >
+              Reservar cita
+            </button>
+          </div>
+        </div>
       )}
 
       {service && (
@@ -189,6 +243,8 @@ export function BookingFlow({ barbers, services }: Props) {
           onBooked={(id) => {
             setDialogOpen(false)
             setBooked({ start: slot, id })
+            if (reschedule?.id) void cancelMyAppointment(reschedule.id, savedPhone())
+            setReschedule(null)
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
           onSlotTaken={() => void loadSlots()}
@@ -238,10 +294,8 @@ function BookedScreen({ start, appointmentId, service, barber, onAgain }: { star
         <PushButton kind="client" appointmentId={appointmentId} label="Avisarme antes de la cita" doneLabel="Te avisaremos antes de tu cita" className="btn-ghost h-12 w-full" />
       </div>
       <p className="relative text-sm text-muted">
-        ¿Necesitas cambiarla?{' '}
-        <a href={shopWhatsAppLink(`Hola, tengo cita el ${formatDateLong(start)} a las ${formatTime(start)} y necesito cambiarla.`)} target="_blank" rel="noopener noreferrer" className="font-semibold text-text underline underline-offset-4">
-          Escríbenos por WhatsApp
-        </a>
+        ¿No puedes venir? Arriba del todo tienes tu cita con los botones <span className="font-semibold text-text">Cambiar hora</span> y{' '}
+        <span className="font-semibold text-text">Cancelar cita</span>.
       </p>
       <button type="button" onClick={onAgain} className="relative mx-auto min-h-11 text-sm text-muted underline underline-offset-4 hover:text-text">
         Hacer otra reserva

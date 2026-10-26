@@ -182,10 +182,76 @@ export type Database = {
           },
         ]
       }
+      shop_settings: {
+        Row: {
+          id: number
+          business_hours: Json | null
+          hero_url: string | null
+          logo_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          business_hours?: Json | null
+          hero_url?: string | null
+          logo_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          business_hours?: Json | null
+          hero_url?: string | null
+          logo_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      time_off: {
+        Row: {
+          id: string
+          barber_id: string | null
+          start_time: string
+          end_time: string
+          motivo: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          barber_id?: string | null
+          start_time: string
+          end_time: string
+          motivo?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          barber_id?: string | null
+          start_time?: string
+          end_time?: string
+          motivo?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'time_off_barber_id_fkey'
+            columns: ['barber_id']
+            isOneToOne: false
+            referencedRelation: 'barbers'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      gallery_photos: {
+        Row: { id: string; url: string; path: string; created_at: string }
+        Insert: { id?: string; url: string; path: string; created_at?: string }
+        Update: { id?: string; url?: string; path?: string; created_at?: string }
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
     Functions: {
       is_staff: { Args: Record<PropertyKey, never>; Returns: boolean }
+      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       book_appointment: {
         Args: {
           p_barber_id: string
@@ -212,6 +278,8 @@ export type Barber = Tables<'barbers'>
 export type Service = Tables<'services'>
 export type AppUser = Tables<'users'>
 export type Appointment = Tables<'appointments'>
+export type TimeOff = Tables<'time_off'>
+export type GalleryPhoto = Tables<'gallery_photos'>
 
 // Cita con sus relaciones, tal como la pide el dashboard.
 export type AppointmentWithRelations = Appointment & {

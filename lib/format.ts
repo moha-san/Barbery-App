@@ -13,3 +13,13 @@ export const localDateKey = (iso: string | Date) => format(toLocal(iso), 'yyyy-M
 
 export const formatPrice = (value: number) =>
   new Intl.NumberFormat(siteConfig.locale, { style: 'currency', currency: siteConfig.currency }).format(value)
+
+// "hoy a las 17:30" / "mañana a las 10:00" / "jueves 29 de octubre a las 10:00"
+export function whenLabel(iso: string): string {
+  const day = new Date(iso)
+  const key = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: tz })
+  const today = new Date()
+  const tomorrow = new Date(today.getTime() + 86_400_000)
+  const prefix = key(day) === key(today) ? 'hoy' : key(day) === key(tomorrow) ? 'mañana' : formatDateLong(iso)
+  return `${prefix} a las ${formatTime(iso)}`
+}
