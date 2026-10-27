@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { siteConfig } from '@/config/site'
 import { weekHoursSchema } from '@/lib/hours'
 import { instagramHandle, slugify, uniqueSlug } from '@/lib/barber-page'
+import { parseRating } from '@/lib/reviews'
 import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/actions/appointments'
 
@@ -185,6 +186,47 @@ export async function saveReviewUrl(url: string): Promise<ActionResult> {
   if (clean && !z.string().url().startsWith('https://').safeParse(clean).success) return { ok: false, error: 'Pega el enlace entero, empieza por https://' }
   const { error } = await s.supabase.from('shop_settings').upsert({ id: 1, google_review_url: clean || null, updated_at: new Date().toISOString() })
   if (error) return { ok: false, error: error.code === '42P01' || error.code === '42703' ? 'Falta preparar la base de datos (pega resenas.sql en Supabase)' : 'No se pudo guardar el enlace' }
+  return done(undefined)
+}
+
+// ─── Opiniones con estrellas en la portada ────────────────────────────────
+const MISSING_OPINIONES = 'Falta preparar la base de datos (pega opiniones.sql en Supabase)'
+const missing = (code?: string) => code === '42P01' || code === '42703' || code === 'PGRST204' || code === 'PGRST205'
+
+export async function saveRating(rating: string, count: string): Promise<ActionResult> {
+  const s = await staff()
+  if (!s?.isAdmin) return NO_PERMISO
+  const r = rating.trim() ? parseRating(rating) : null
+  if (rating.trim() && r === null) return { ok: false, error: 'La nota va de 1 a 5, por ejemplo 4,8' }
+  const c = count.trim() ? Number(count.trim().replace(/\./g, '')) : null
+  if (c !== null && (!Number.isInteger(c) || c < 0 || c > 1_000_000)) return { ok: false, error: 'Escribe el número de reseñas, por ejemplo 127' }
+  const { error } = await s.supabase.from('shop_settings').upsert({ id: 1, google_rating: r, google_rating_count: c, updated_at: new Date().toISOString() })
+  if (error) return { ok: false, error: missing(error.code) ? MISSING_OPINIONES : 'No se pudo guardar la nota' }
+  return done(undefined)
+}
+
+const opinionSchema = z.object({
+  nombre: z.string().trim().min(1, 'Escribe el nombre del cliente').max(60, 'Nombre demasiado largo'),
+  estrellas: z.coerce.number().int().min(1).max(5),
+  texto: z.string().trim().min(3, 'Escribe lo que dijo el cliente').max(400, 'Máximo 400 letras: recórtala un poco'),
+})
+
+export async function addOpinion(input: z.input<typeof opinionSchema>): Promise<ActionResult<{ id: string }>> {
+  const s = await staff()
+  if (!s?.isAdmin) return NO_PERMISO
+  const parsed = opinionSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) }
+  const { data, error } = await s.supabase.from('opiniones').insert(parsed.data).select('id').single()
+  if (error || !data) return { ok: false, error: missing(error?.code) ? MISSING_OPINIONES : 'No se pudo guardar la opinión' }
+  return done({ id: data.id })
+}
+
+export async function deleteOpinion(id: string): Promise<ActionResult> {
+  const s = await staff()
+  if (!s?.isAdmin) return NO_PERMISO
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, error: 'Datos inválidos' }
+  const { error } = await s.supabase.from('opiniones').delete().eq('id', id)
+  if (error) return { ok: false, error: 'No se pudo quitar la opinión' }
   return done(undefined)
 }
 

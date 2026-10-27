@@ -206,6 +206,8 @@ export type Database = {
           hero_url: string | null
           logo_url: string | null
           google_review_url: string | null
+          google_rating: number | null
+          google_rating_count: number | null
           updated_at: string
         }
         Insert: {
@@ -214,6 +216,8 @@ export type Database = {
           hero_url?: string | null
           logo_url?: string | null
           google_review_url?: string | null
+          google_rating?: number | null
+          google_rating_count?: number | null
           updated_at?: string
         }
         Update: {
@@ -222,6 +226,8 @@ export type Database = {
           hero_url?: string | null
           logo_url?: string | null
           google_review_url?: string | null
+          google_rating?: number | null
+          google_rating_count?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -267,6 +273,12 @@ export type Database = {
         Update: { id?: string; fecha?: string; barber_id?: string | null; service_id?: string | null; nombre?: string; telefono?: string; created_at?: string }
         Relationships: []
       }
+      opiniones: {
+        Row: { id: string; nombre: string; estrellas: number; texto: string; created_at: string }
+        Insert: { id?: string; nombre: string; estrellas?: number; texto: string; created_at?: string }
+        Update: { id?: string; nombre?: string; estrellas?: number; texto?: string; created_at?: string }
+        Relationships: []
+      }
       gallery_photos: {
         Row: { id: string; url: string; path: string; created_at: string; barber_id: string | null }
         Insert: { id?: string; url: string; path: string; created_at?: string; barber_id?: string | null }
@@ -307,6 +319,7 @@ export type Appointment = Tables<'appointments'>
 export type TimeOff = Tables<'time_off'>
 export type GalleryPhoto = Tables<'gallery_photos'>
 export type WaitlistEntry = Tables<'waitlist'>
+export type Opinion = Tables<'opiniones'>
 
 // Cita con sus relaciones, tal como la pide el dashboard.
 export type AppointmentWithRelations = Appointment & {

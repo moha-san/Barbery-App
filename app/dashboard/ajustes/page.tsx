@@ -3,16 +3,16 @@ import Link from 'next/link'
 import { siteConfig } from '@/config/site'
 import { requireStaff } from '@/lib/staff'
 import { localDateKey } from '@/lib/format'
-import { getGallery, getShopSettings } from '@/lib/shop'
+import { getGallery, getOpinions, getShopSettings } from '@/lib/shop'
 import { ArrowLeftIcon } from '@/components/icons'
-import { BarbersEditor, HoursEditor, PhotosEditor, ReviewEditor, Section, ServicesEditor, TimeOffEditor, type TimeOffRow } from '@/components/settings/editors'
+import { BarbersEditor, HoursEditor, OpinionsEditor, PhotosEditor, ReviewEditor, Section, ServicesEditor, TimeOffEditor, type TimeOffRow } from '@/components/settings/editors'
 
 export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
   const { supabase, isAdmin, barberId: ownBarber } = await requireStaff()
 
-  const [services, barbers, blocks, raw, settings, gallery] = await Promise.all([
+  const [services, barbers, blocks, raw, settings, gallery, opinions] = await Promise.all([
     supabase.from('services').select('*').order('precio').then((r) => ({ ...r, data: r.data && sortServices(r.data) })),
     supabase.from('barbers').select('*').order('nombre'),
     supabase
@@ -24,6 +24,7 @@ export default async function SettingsPage() {
     supabase.from('shop_settings').select('hero_url, logo_url').eq('id', 1).maybeSingle(),
     getShopSettings(),
     getGallery(),
+    getOpinions(),
   ])
   // Email de la cuenta de cada barbero (si tiene).
   const userIds = (barbers.data ?? []).map((b) => b.user_id).filter((v): v is string => !!v)
@@ -39,6 +40,7 @@ export default async function SettingsPage() {
         ['horario', 'Horario'],
         ['descansos', 'Días libres'],
         ['fotos', 'Fotos'],
+        ['opiniones', 'Opiniones'],
         ['resenas', 'Reseñas'],
       ]
     : [['descansos', 'Días libres']]
@@ -93,6 +95,11 @@ export default async function SettingsPage() {
         {isAdmin && (
           <Section id="fotos" title="Fotos" hint="Sube fotos desde el móvil. Se hacen más pequeñas solas para que la web cargue rápido.">
             <PhotosEditor heroUrl={raw.data?.hero_url ?? null} logoUrl={raw.data?.logo_url ?? null} defaultHero={siteConfig.theme.heroImage} gallery={gallery.filter((g) => !g.barber_id)} />
+          </Section>
+        )}
+        {isAdmin && (
+          <Section id="opiniones" title="Opiniones en la portada" hint="Dan confianza al reservar. Copia tu nota de Google Maps y pega aquí tus mejores opiniones (con el nombre que puso el cliente). Se ven en la web al momento.">
+            <OpinionsEditor rating={settings.rating} count={settings.ratingCount} opinions={opinions} />
           </Section>
         )}
         {isAdmin && (

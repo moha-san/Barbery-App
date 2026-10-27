@@ -7,9 +7,17 @@ import { computeSlots, type BusyRange } from '@/lib/slots'
 import { parseWeekHours, type WeekHours } from '@/lib/hours'
 import { localDateKey } from '@/lib/format'
 import { createAdminClient } from '@/lib/supabase/server'
-import type { Barber, GalleryPhoto } from '@/types/database'
+import { parseRating } from '@/lib/reviews'
+import type { Barber, GalleryPhoto, Opinion } from '@/types/database'
 
-export type ShopSettings = { hours: WeekHours; heroUrl: string; logoUrl: string | null; reviewUrl: string }
+export type ShopSettings = {
+  hours: WeekHours
+  heroUrl: string
+  logoUrl: string | null
+  reviewUrl: string
+  rating: number | null // nota media de Google (4,9)
+  ratingCount: number | null // nº de reseñas en Google
+}
 
 // Ajustes que el dueño cambia en el panel. Si la tabla aún no existe, se usan los de config/site.ts.
 export const getShopSettings = cache(async (): Promise<ShopSettings> => {
@@ -18,6 +26,8 @@ export const getShopSettings = cache(async (): Promise<ShopSettings> => {
     heroUrl: siteConfig.theme.heroImage,
     logoUrl: siteConfig.theme.logo,
     reviewUrl: siteConfig.googleReviewUrl,
+    rating: null,
+    ratingCount: null,
   }
   try {
     const { data, error } = await createAdminClient().from('shop_settings').select('*').eq('id', 1).maybeSingle()
@@ -27,6 +37,8 @@ export const getShopSettings = cache(async (): Promise<ShopSettings> => {
       heroUrl: data.hero_url || fallback.heroUrl,
       logoUrl: data.logo_url || fallback.logoUrl,
       reviewUrl: data.google_review_url || fallback.reviewUrl,
+      rating: parseRating(data.google_rating),
+      ratingCount: data.google_rating_count ?? null,
     }
   } catch {
     return fallback
@@ -36,6 +48,16 @@ export const getShopSettings = cache(async (): Promise<ShopSettings> => {
 export const getGallery = cache(async (): Promise<GalleryPhoto[]> => {
   try {
     const { data } = await createAdminClient().from('gallery_photos').select('*').order('created_at', { ascending: false }).limit(60)
+    return data ?? []
+  } catch {
+    return []
+  }
+})
+
+// Opiniones que el dueño pone en Ajustes. Vacío si aún no se pegó opiniones.sql.
+export const getOpinions = cache(async (): Promise<Opinion[]> => {
+  try {
+    const { data } = await createAdminClient().from('opiniones').select('*').order('created_at', { ascending: false }).limit(30)
     return data ?? []
   } catch {
     return []
