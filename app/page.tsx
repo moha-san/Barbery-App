@@ -10,7 +10,9 @@ import { shopWhatsAppLink } from '@/lib/whatsapp'
 import { createSessionClient } from '@/lib/supabase/server'
 import { openStatus } from '@/lib/hours'
 import { barberPath } from '@/lib/barber-page'
-import { getGallery, getShopSettings, nextFreeSlot } from '@/lib/shop'
+import { getGallery, getOpinions, getShopSettings, nextFreeSlot } from '@/lib/shop'
+import { formatRating, ratingCountLabel } from '@/lib/reviews'
+import { Stars } from '@/components/stars'
 
 export const revalidate = 60
 
@@ -22,7 +24,7 @@ export default async function HomePage() {
     supabase.from('barbers').select('*').eq('activo', true).order('nombre'),
     supabase.from('services').select('*').eq('activo', true).order('precio').then((r) => ({ ...r, data: r.data && sortServices(r.data) })),
   ])
-  const [settings, gallery] = await Promise.all([getShopSettings(), getGallery()])
+  const [settings, gallery, opinions] = await Promise.all([getShopSettings(), getGallery(), getOpinions()])
   const now = toLocal(new Date())
   const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
   const status = openStatus(settings.hours, now.getDay(), hhmm)
@@ -55,6 +57,13 @@ export default async function HomePage() {
               <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-border bg-surface/80 px-3 text-muted backdrop-blur">
                 <MapPinIcon /> {siteConfig.address}
               </span>
+              {settings.rating && (
+                <a href="#opiniones" className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-surface/80 px-3 backdrop-blur transition hover:border-primary/50">
+                  <StarIcon className="fill-current text-accent" />
+                  <strong className="font-semibold">{formatRating(settings.rating)}</strong>
+                  {settings.ratingCount ? <span className="text-muted">· {settings.ratingCount.toLocaleString('es-ES')} opiniones</span> : null}
+                </a>
+              )}
             </div>
 
             <a href="#reservar" className="btn-primary mt-6 h-14 w-full text-base sm:w-auto sm:px-8">
@@ -118,6 +127,35 @@ export default async function HomePage() {
                   <img key={g.id} src={g.url} alt="Corte hecho en la barbería" loading="lazy" className="aspect-[4/5] w-48 shrink-0 snap-start rounded-card border border-border object-cover lg:w-full" />
                 ))}
               </div>
+            </section>
+          )}
+
+          {(settings.rating || opinions.length > 0) && (
+            <section id="opiniones" aria-labelledby="opiniones-titulo" className="mt-14 scroll-mt-24">
+              <h2 id="opiniones-titulo" className="text-2xl">Lo que dicen los clientes</h2>
+              {settings.rating && (
+                <div className="mt-4 flex items-center gap-4">
+                  <span className="font-display text-5xl leading-none">{formatRating(settings.rating)}</span>
+                  <span className="grid gap-1">
+                    <Stars value={settings.rating} className="text-lg" />
+                    {settings.ratingCount ? <span className="text-sm text-muted">{ratingCountLabel(settings.ratingCount)}</span> : null}
+                  </span>
+                </div>
+              )}
+              {opinions.length > 0 && (
+                <ul className="-mx-4 mt-5 flex snap-x gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-2 lg:px-0">
+                  {opinions.slice(0, 12).map((o) => (
+                    <li key={o.id} className="card flex w-72 shrink-0 snap-start flex-col gap-3 p-5 lg:w-auto">
+                      <Stars value={o.estrellas} className="text-sm" />
+                      <blockquote className="flex-1 text-sm leading-relaxed">“{o.texto}”</blockquote>
+                      <p className="flex items-center gap-2 text-sm text-muted">
+                        <span aria-hidden className="font-display grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary">{o.nombre.charAt(0).toUpperCase()}</span>
+                        {o.nombre}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           )}
 

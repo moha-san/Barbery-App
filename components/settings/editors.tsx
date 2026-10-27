@@ -6,13 +6,16 @@ import { useRouter } from 'next/navigation'
 import { addDays, format } from 'date-fns'
 import {
   addGalleryPhoto,
+  addOpinion,
   addTimeOff,
   createBarberAccount,
   deleteGalleryPhoto,
+  deleteOpinion,
   removeBarberAccount,
   deleteTimeOff,
   saveBarber,
   saveHours,
+  saveRating,
   saveReviewUrl,
   saveService,
   saveShopImage,
@@ -22,9 +25,10 @@ import type { ActionResult } from '@/actions/appointments'
 import { formatDateLong, formatTime, toLocal } from '@/lib/format'
 import type { WeekHours } from '@/lib/hours'
 import { uploadPhoto } from '@/lib/upload-photo'
-import { CheckIcon, CopyIcon, ImageIcon, PlusIcon, TrashIcon, XIcon } from '@/components/icons'
+import { CheckIcon, CopyIcon, ImageIcon, PlusIcon, StarIcon, TrashIcon, XIcon } from '@/components/icons'
 import { barberPath } from '@/lib/barber-page'
-import type { Barber, GalleryPhoto, Service } from '@/types/database'
+import { Stars } from '@/components/stars'
+import type { Barber, GalleryPhoto, Opinion, Service } from '@/types/database'
 
 // Guarda con un botón y enseña "Guardado" o el error debajo.
 function useSave() {
@@ -709,5 +713,114 @@ export function ReviewEditor({ url: initial }: { url: string }) {
         {note}
       </div>
     </form>
+  )
+}
+
+// ─── Opiniones con estrellas en la portada ────────────────────────────────
+export function OpinionsEditor({ rating, count, opinions }: { rating: number | null; count: number | null; opinions: Opinion[] }) {
+  const router = useRouter()
+  const [nota, setNota] = useState(rating ? String(rating).replace('.', ',') : '')
+  const [total, setTotal] = useState(count ? String(count) : '')
+  const [nombre, setNombre] = useState('')
+  const [estrellas, setEstrellas] = useState(5)
+  const [texto, setTexto] = useState('')
+  const saveNote = useSave()
+  const add = useSave()
+  const del = useSave()
+
+  return (
+    <div className="grid gap-4">
+      <form
+        className="card grid gap-3 p-4"
+        onSubmit={(e) => {
+          e.preventDefault()
+          saveNote.run(() => saveRating(nota, total), 'Guardado', () => router.refresh())
+        }}
+      >
+        <p className="text-sm font-medium">Tu nota en Google</p>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="grid gap-1.5 text-sm text-muted">
+            Nota media
+            <input inputMode="decimal" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="4,9" className="field" />
+          </label>
+          <label className="grid gap-1.5 text-sm text-muted">
+            Nº de reseñas
+            <input inputMode="numeric" value={total} onChange={(e) => setTotal(e.target.value)} placeholder="127" className="field" />
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="submit" disabled={saveNote.pending} className="btn-primary h-11">
+            {saveNote.pending ? 'Guardando…' : 'Guardar nota'}
+          </button>
+          {saveNote.note}
+        </div>
+      </form>
+
+      <form
+        className="card grid gap-3 p-4"
+        onSubmit={(e) => {
+          e.preventDefault()
+          add.run(() => addOpinion({ nombre, estrellas, texto }), 'Opinión añadida', (r) => {
+            if (!r.ok) return
+            setNombre('')
+            setTexto('')
+            setEstrellas(5)
+            router.refresh()
+          })
+        }}
+      >
+        <p className="text-sm font-medium">Añadir una opinión</p>
+        <label className="grid gap-1.5 text-sm text-muted">
+          Nombre del cliente
+          <input value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={60} placeholder="Javi M." className="field" />
+        </label>
+        <fieldset className="grid gap-1.5 text-sm text-muted">
+          <legend className="mb-1.5">Estrellas</legend>
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                aria-label={`${n} ${n === 1 ? 'estrella' : 'estrellas'}`}
+                aria-pressed={estrellas === n}
+                onClick={() => setEstrellas(n)}
+                className="grid h-11 w-11 place-items-center rounded-full text-2xl transition hover:bg-text/5"
+              >
+                <StarIcon className={n <= estrellas ? 'fill-current text-accent' : 'text-muted/50'} />
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <label className="grid gap-1.5 text-sm text-muted">
+          Lo que dijo
+          <textarea value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={400} rows={3} placeholder="Muy buen trato y el degradado perfecto. Repetiré." className="field min-h-24 py-2" />
+        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="submit" disabled={add.pending} className="btn-primary h-11">
+            <PlusIcon /> {add.pending ? 'Guardando…' : 'Añadir opinión'}
+          </button>
+          {add.note}
+        </div>
+      </form>
+
+      {opinions.length > 0 && (
+        <div className="grid gap-2">
+          {opinions.map((o) => (
+            <div key={o.id} className="card flex items-start gap-3 p-4">
+              <div className="min-w-0 flex-1">
+                <p className="flex flex-wrap items-center gap-2 font-semibold">
+                  {o.nombre} <Stars value={o.estrellas} className="text-sm" />
+                </p>
+                <p className="mt-1 text-sm text-muted">{o.texto}</p>
+              </div>
+              <button type="button" className="btn-ghost h-10 shrink-0 px-3" disabled={del.pending} onClick={() => del.run(() => deleteOpinion(o.id), 'Opinión quitada', () => router.refresh())}>
+                <TrashIcon /> Quitar
+              </button>
+            </div>
+          ))}
+          {del.note}
+        </div>
+      )}
+    </div>
   )
 }
