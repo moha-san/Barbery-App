@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { siteConfig } from '@/config/site'
 import { freeSlots } from '@/lib/shop'
 import { localDateKey } from '@/lib/format'
+import { getStaff } from '@/lib/staff'
 import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/actions/appointments'
 
@@ -62,10 +63,13 @@ const quickSchema = z.object({
 
 // Sin reglas de horario: el barbero manda. Solo Postgres impide que se solapen dos citas.
 export async function quickBook(input: z.input<typeof quickSchema>): Promise<ActionResult<{ id: string; fecha: string }>> {
-  if (!(await staff())) return { ok: false, error: 'Inicia sesión otra vez' }
+  const s = await getStaff()
+  if (!s) return { ok: false, error: 'Inicia sesión otra vez' }
   const parsed = quickSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   const v = parsed.data
+  // Un barbero con cuenta propia solo apunta citas en su agenda.
+  if (s.barberId && v.barberId !== s.barberId) return { ok: false, error: 'Solo puedes apuntar citas en tu agenda' }
   const { data: id, error } = await createAdminClient().rpc('book_appointment', {
     p_barber_id: v.barberId,
     p_service_id: v.serviceId,

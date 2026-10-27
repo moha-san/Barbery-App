@@ -7,13 +7,16 @@ import { addDays, format } from 'date-fns'
 import {
   addGalleryPhoto,
   addTimeOff,
+  createBarberAccount,
   deleteGalleryPhoto,
+  removeBarberAccount,
   deleteTimeOff,
   saveBarber,
   saveHours,
   saveReviewUrl,
   saveService,
   saveShopImage,
+  setBarberPassword,
 } from '@/actions/settings'
 import type { ActionResult } from '@/actions/appointments'
 import { formatDateLong, formatTime, toLocal } from '@/lib/format'
@@ -137,7 +140,7 @@ export function ServicesEditor({ services }: { services: Service[] }) {
 }
 
 // ─── Barberos ─────────────────────────────────────────────────────────────
-type BarberDraft = { id?: string; nombre: string; especialidad: string | null; avatar_url: string | null; activo: boolean; slug?: string | null; instagram?: string | null }
+type BarberDraft = { id?: string; nombre: string; especialidad: string | null; avatar_url: string | null; activo: boolean; slug?: string | null; instagram?: string | null; cuenta?: string | null }
 
 function PhotoButton({ folder, onUploaded, children, className }: { folder: 'barberos' | 'galeria' | 'local'; onUploaded: (r: { url: string; path: string }) => void; children: ReactNode; className?: string }) {
   const [busy, setBusy] = useState(false)
@@ -181,7 +184,7 @@ function BarberRow({ initial, photos, onSaved }: { initial: BarberDraft; photos:
       className="card grid gap-3 p-4"
       onSubmit={(e) => {
         e.preventDefault()
-        const { slug: _slug, ...fields } = b
+        const { slug: _slug, cuenta: _cuenta, ...fields } = b
         run(() => saveBarber({ ...fields, especialidad: b.especialidad?.trim() || null, instagram: b.instagram?.trim() || null }), 'Guardado', (r) => {
           if (r.ok) {
             const saved = r.data as { id: string; slug: string | null }
@@ -221,6 +224,7 @@ function BarberRow({ initial, photos, onSaved }: { initial: BarberDraft; photos:
         <input id={`bi-${uid}`} className="field" value={b.instagram ?? ''} onChange={(e) => set({ instagram: e.target.value })} placeholder="@carlos.barber" autoCapitalize="none" autoCorrect="off" />
       </label>
       {b.id && <BarberPageTools id={b.id} slug={b.slug ?? null} photos={photos} onChange={onSaved} />}
+      {b.id && <BarberAccount id={b.id} email={b.cuenta ?? null} onChange={onSaved} />}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Toggle checked={b.activo} onChange={(v) => set({ activo: v })} label={b.activo ? 'Trabajando' : 'No aparece'} />
         <button className="btn-primary h-11 px-5" disabled={pending}>
@@ -303,7 +307,113 @@ function BarberPageTools({ id, slug, photos: initial, onChange }: { id: string; 
   )
 }
 
-export function BarbersEditor({ barbers, gallery = [] }: { barbers: Barber[]; gallery?: GalleryPhoto[] }) {
+// Cuenta para entrar en el panel: el barbero solo ve sus citas y su caja.
+// Está dentro del formulario del barbero: por eso sus botones son type="button" (no guardan la ficha).
+function BarberAccount({ id, email: initial, onChange }: { id: string; email: string | null; onChange: () => void }) {
+  const [email, setEmail] = useState(initial)
+  const [newEmail, setNewEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const { pending, run, note } = useSave()
+  const pw = (
+    <input
+      type="text"
+      className="field"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      placeholder={email ? 'Nueva contraseña' : 'Contraseña (mín. 6)'}
+      aria-label="Contraseña"
+      autoComplete="new-password"
+      autoCapitalize="none"
+      autoCorrect="off"
+    />
+  )
+  return (
+    <div className="grid gap-3 rounded-btn border border-border p-3">
+      <p className="text-sm font-semibold">Su cuenta para el panel</p>
+      {email ? (
+        <>
+          <p className="text-sm">
+            Entra con <strong className="break-all">{email}</strong>. Solo ve sus citas y su caja.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <div className="min-w-0 flex-1">{pw}</div>
+            <button
+              type="button"
+              className="btn-ghost h-11"
+              disabled={pending || !password}
+              onClick={() => run(() => setBarberPassword(id, password), 'Contraseña cambiada', (r) => r.ok && setPassword(''))}
+            >
+              Cambiar contraseña
+            </button>
+          </div>
+          {confirming ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span>¿Quitarle el acceso? Sus citas no se borran.</span>
+              <button
+                type="button"
+                className="btn-ghost h-10 text-danger"
+                disabled={pending}
+                onClick={() =>
+                  run(() => removeBarberAccount(id), 'Acceso quitado', (r) => {
+                    setConfirming(false)
+                    if (r.ok) {
+                      setEmail(null)
+                      onChange()
+                    }
+                  })
+                }
+              >
+                Sí, quitar
+              </button>
+              <button type="button" className="btn-ghost h-10" onClick={() => setConfirming(false)}>
+                No
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="btn-ghost h-10 justify-self-start text-danger" onClick={() => setConfirming(true)}>
+              <TrashIcon /> Quitar acceso
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="text-xs text-muted">Ponle un email y una contraseña y dáselos. Con ellos entra en el panel y solo ve sus citas y su caja. Tú lo sigues viendo todo.</p>
+          <input
+            type="email"
+            className="field"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            placeholder="email@ejemplo.com"
+            aria-label="Email del barbero"
+            autoComplete="off"
+            autoCapitalize="none"
+          />
+          {pw}
+          <button
+            type="button"
+            className="btn-primary h-11 justify-self-start px-5"
+            disabled={pending || !newEmail || !password}
+            onClick={() =>
+              run(() => createBarberAccount({ barberId: id, email: newEmail, password }), 'Cuenta creada. Dale su email y contraseña.', (r) => {
+                if (r.ok) {
+                  setEmail((r.data as { email: string }).email)
+                  setPassword('')
+                  onChange()
+                }
+              })
+            }
+          >
+            {pending ? 'Creando…' : 'Crear cuenta'}
+          </button>
+        </>
+      )}
+      {note}
+    </div>
+  )
+}
+
+export function BarbersEditor({ barbers, gallery = [] }: { barbers: (Barber & { cuenta?: string | null })[]; gallery?: GalleryPhoto[] }) {
   const router = useRouter()
   const [drafts, setDrafts] = useState<BarberDraft[]>(barbers)
   return (

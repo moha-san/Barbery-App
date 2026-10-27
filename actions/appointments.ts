@@ -164,10 +164,10 @@ export async function cancelMyAppointment(id: string, telefono: string): Promise
   const supabase = createAdminClient()
   const { data: a } = await supabase
     .from('appointments')
-    .select('id, start_time, status, client:users(nombre, telefono), barber:barbers(nombre)')
+    .select('id, barber_id, start_time, status, client:users(nombre, telefono), barber:barbers(nombre)')
     .eq('id', id)
     .maybeSingle()
-  const appt = a as unknown as { id: string; start_time: string; status: string; client: { nombre: string; telefono: string } | null; barber: { nombre: string } | null } | null
+  const appt = a as unknown as { id: string; barber_id: string; start_time: string; status: string; client: { nombre: string; telefono: string } | null; barber: { nombre: string } | null } | null
   if (!appt || !appt.client || normalizePhone(appt.client.telefono) !== normalizePhone(telefono)) {
     return { ok: false, error: 'No encontramos esa cita. Escríbenos por WhatsApp.' }
   }

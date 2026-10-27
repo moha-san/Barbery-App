@@ -48,6 +48,7 @@ export type Database = {
           created_at: string
           slug: string | null
           instagram: string | null
+          user_id: string | null
         }
         Insert: {
           id?: string
@@ -58,6 +59,7 @@ export type Database = {
           created_at?: string
           slug?: string | null
           instagram?: string | null
+          user_id?: string | null
         }
         Update: {
           id?: string
@@ -68,6 +70,7 @@ export type Database = {
           created_at?: string
           slug?: string | null
           instagram?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

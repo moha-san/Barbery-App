@@ -10,7 +10,7 @@ type Props = { searchParams: { fecha?: string; barbero?: string; nombre?: string
 
 // Cita rápida: el barbero apunta a quien llama por teléfono o entra sin cita.
 export default async function QuickBookPage({ searchParams }: Props) {
-  const { supabase } = await requireStaff()
+  const { supabase, barberId: ownBarber } = await requireStaff()
   const [barbers, services] = await Promise.all([
     supabase.from('barbers').select('id, nombre').eq('activo', true).order('nombre'),
     supabase.from('services').select('*').eq('activo', true).order('precio').then((r) => ({ ...r, data: r.data && sortServices(r.data) })),
@@ -22,9 +22,9 @@ export default async function QuickBookPage({ searchParams }: Props) {
     <main className="mx-auto max-w-xl px-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))] sm:px-8">
       <SubHeader title="Cita rápida" />
       <QuickBookForm
-        barbers={barbers.data ?? []}
+        barbers={(barbers.data ?? []).filter((b) => !ownBarber || b.id === ownBarber)}
         services={services.data ?? []}
-        initial={{ fecha, barberId: searchParams.barbero ?? null, nombre: searchParams.nombre ?? '', telefono: searchParams.tel ?? '' }}
+        initial={{ fecha, barberId: ownBarber ?? searchParams.barbero ?? null, nombre: searchParams.nombre ?? '', telefono: searchParams.tel ?? '' }}
         today={today}
       />
     </main>
