@@ -5,6 +5,7 @@ import { useFormState, useFormStatus } from 'react-dom'
 import { login } from '@/actions/auth'
 import { siteConfig } from '@/config/site'
 import { BrandMark } from '@/components/brand-mark'
+import { ForgetPrivatePages } from '@/components/offline'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [error, formAction] = useFormState(login, null)
   return (
     <main className="grid min-h-dvh lg:grid-cols-2">
+      <ForgetPrivatePages />
       <section className="relative isolate hidden overflow-hidden lg:flex lg:flex-col lg:justify-end lg:p-12">
         <img src={siteConfig.theme.heroImage} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
         <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/60 to-transparent" />

@@ -1,8 +1,7 @@
 import { sortServices } from '@/lib/format'
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { siteConfig } from '@/config/site'
-import { createSessionClient } from '@/lib/supabase/server'
+import { requireStaff } from '@/lib/staff'
 import { localDateKey } from '@/lib/format'
 import { getGallery, getShopSettings } from '@/lib/shop'
 import { ArrowLeftIcon } from '@/components/icons'
@@ -11,14 +10,7 @@ import { BarbersEditor, HoursEditor, PhotosEditor, ReviewEditor, Section, Servic
 export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
-  const supabase = createSessionClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-  const { data: profile } = await supabase.from('users').select('rol').eq('id', user.id).single()
-  if (!profile || profile.rol === 'cliente') redirect('/dashboard')
-  const isAdmin = profile.rol === 'admin'
+  const { supabase, isAdmin, barberId: ownBarber } = await requireStaff()
 
   const [services, barbers, blocks, raw, settings, gallery] = await Promise.all([
     supabase.from('services').select('*').order('precio').then((r) => ({ ...r, data: r.data && sortServices(r.data) })),
@@ -33,6 +25,10 @@ export default async function SettingsPage() {
     getShopSettings(),
     getGallery(),
   ])
+  // Email de la cuenta de cada barbero (si tiene).
+  const userIds = (barbers.data ?? []).map((b) => b.user_id).filter((v): v is string => !!v)
+  const { data: accounts } = userIds.length ? await supabase.from('users').select('id, email').in('id', userIds) : { data: [] }
+  const withAccount = (barbers.data ?? []).map((b) => ({ ...b, cuenta: b.user_id ? accounts?.find((u) => u.id === b.user_id)?.email ?? '(sin email)' : null }))
   // Si falla la tabla de ajustes es que falta pegar el SQL en Supabase.
   const needsSql = !!raw.error || !!blocks.error
 
@@ -79,8 +75,8 @@ export default async function SettingsPage() {
             <Section id="servicios" title="Servicios y precios" hint="Lo que el cliente ve al reservar. Para dejar de ofrecer uno, ocúltalo (las citas antiguas se guardan).">
               <ServicesEditor services={services.data ?? []} />
             </Section>
-            <Section id="barberos" title="Barberos" hint="Con foto se reserva más. Cada barbero tiene su propia página con sus cortes: copia su enlace y ponlo en su Instagram. Si alguien deja de trabajar aquí, desactívalo.">
-              <BarbersEditor barbers={barbers.data ?? []} gallery={gallery.filter((g) => g.barber_id)} />
+            <Section id="barberos" title="Barberos" hint="Con foto se reserva más. Cada barbero tiene su propia página con sus cortes: copia su enlace y ponlo en su Instagram. Crea su cuenta para que vea solo sus citas. Si alguien deja de trabajar aquí, desactívalo.">
+              <BarbersEditor barbers={withAccount} gallery={gallery.filter((g) => g.barber_id)} />
             </Section>
             <Section id="horario" title="Horario" hint="Para cerrar a mediodía, pon dos tramos: mañana y tarde. Los cambios se ven al momento en la web.">
               <HoursEditor hours={settings.hours} />
@@ -89,7 +85,7 @@ export default async function SettingsPage() {
         )}
         <Section id="descansos" title="Días libres, vacaciones y descansos" hint="Bloquea un día, unas horas o unas vacaciones. Las citas ya reservadas no se borran: avisa a esos clientes.">
           <TimeOffEditor
-            barbers={(barbers.data ?? []).filter((b) => b.activo)}
+            barbers={(barbers.data ?? []).filter((b) => b.activo && (!ownBarber || b.id === ownBarber))}
             blocks={(blocks.data ?? []) as unknown as TimeOffRow[]}
             today={localDateKey(new Date())}
           />

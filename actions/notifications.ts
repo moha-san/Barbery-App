@@ -11,20 +11,27 @@ import type { AppointmentWithRelations } from '@/types/database'
 // generateWhatsAppReminderLink vive en lib/whatsapp.ts porque la usa el dashboard en el cliente.
 
 // Aviso al móvil del dueño y los barberos que activaron los avisos en el panel.
-async function sendStaffAlert(payload: { title: string; body: string; url: string; tag: string }): Promise<void> {
+// Un barbero con cuenta propia solo recibe los avisos de sus citas.
+async function sendStaffAlert(barberId: string | null, payload: { title: string; body: string; url: string; tag: string }): Promise<void> {
   const supabase = createAdminClient()
-  const { data: staff } = await supabase.from('users').select('id').in('rol', ['admin', 'barbero'])
-  if (!staff?.length) return
+  const [{ data: staff }, { data: links }] = await Promise.all([
+    supabase.from('users').select('id').in('rol', ['admin', 'barbero']),
+    // Si aún no se pegó el SQL de cuentas, falla y no se filtra nada (como antes).
+    supabase.from('barbers').select('id, user_id').not('user_id', 'is', null),
+  ])
+  const ownBarber = new Map((links ?? []).map((b) => [b.user_id, b.id]))
+  const to = (staff ?? []).filter((u) => !ownBarber.has(u.id) || ownBarber.get(u.id) === barberId)
+  if (!to.length) return
   const { data: subs } = await supabase
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
-    .in('user_id', staff.map((u) => u.id))
+    .in('user_id', to.map((u) => u.id))
   await sendPush(subs ?? [], payload)
 }
 
 export async function sendImmediateAlert(appointment: AppointmentWithRelations): Promise<void> {
   const when = `${formatDateLong(appointment.start_time)} a las ${formatTime(appointment.start_time)}`
-  await sendStaffAlert({
+  await sendStaffAlert(appointment.barber_id, {
     title: `Nueva cita: ${appointment.client?.nombre ?? 'cliente'}`,
     body: `${appointment.service?.nombre ?? 'Servicio'} con ${appointment.barber?.nombre ?? '-'} · ${when}`,
     url: `/dashboard?fecha=${localDateKey(appointment.start_time)}`,
@@ -33,8 +40,8 @@ export async function sendImmediateAlert(appointment: AppointmentWithRelations):
 }
 
 // El cliente canceló desde su móvil: el hueco queda libre.
-export async function sendCancelAlert(appointment: { id: string; start_time: string; client: { nombre: string } | null; barber: { nombre: string } | null }, waiting = 0): Promise<void> {
-  await sendStaffAlert({
+export async function sendCancelAlert(appointment: { id: string; barber_id: string; start_time: string; client: { nombre: string } | null; barber: { nombre: string } | null }, waiting = 0): Promise<void> {
+  await sendStaffAlert(appointment.barber_id, {
     title: `Cita cancelada: ${appointment.client?.nombre ?? 'cliente'}`,
     body: `${formatDateLong(appointment.start_time)} a las ${formatTime(appointment.start_time)} con ${appointment.barber?.nombre ?? '-'}. El hueco ya está libre.${waiting ? ` Hay ${waiting} en lista de espera.` : ''}`,
     url: `/dashboard?fecha=${localDateKey(appointment.start_time)}`,

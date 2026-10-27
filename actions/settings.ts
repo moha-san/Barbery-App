@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { siteConfig } from '@/config/site'
 import { weekHoursSchema } from '@/lib/hours'
 import { instagramHandle, slugify, uniqueSlug } from '@/lib/barber-page'
-import { createSessionClient } from '@/lib/supabase/server'
+import { createAdminClient, createSessionClient } from '@/lib/supabase/server'
 import type { ActionResult } from '@/actions/appointments'
 
 // Todo con la sesión del usuario: las reglas de la base de datos (RLS) deciden quién puede cambiar qué.
@@ -85,6 +85,74 @@ export async function saveBarber(input: z.input<typeof barberSchema>): Promise<A
   const { data, error } = await q.select('id').single()
   if (error || !data) return { ok: false, error: 'No se pudo guardar el barbero' }
   return done({ id: data.id, slug })
+}
+
+// ─── Cuenta de cada barbero (para que entre en el panel y vea solo lo suyo) ──
+const MISSING_CUENTAS = 'Falta preparar la base de datos (pega el SQL cuentas-barberos.sql en Supabase)'
+const accountSchema = z.object({
+  barberId: z.string().uuid(),
+  email: z.string().trim().toLowerCase().email('Escribe un email válido'),
+  password: z.string().min(6, 'La contraseña necesita al menos 6 letras o números').max(72),
+})
+
+export async function createBarberAccount(input: z.input<typeof accountSchema>): Promise<ActionResult<{ email: string }>> {
+  const s = await staff()
+  if (!s?.isAdmin) return NO_PERMISO
+  const parsed = accountSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) }
+  const { barberId, email, password } = parsed.data
+  const admin = createAdminClient()
+  const { data: barber, error: bErr } = await admin.from('barbers').select('id, nombre, user_id').eq('id', barberId).maybeSingle()
+  if (bErr) return { ok: false, error: bErr.code === '42703' ? MISSING_CUENTAS : 'No se pudo crear la cuenta' }
+  if (!barber) return { ok: false, error: 'Barbero no encontrado' }
+  if (barber.user_id) return { ok: false, error: 'Este barbero ya tiene cuenta' }
+
+  const { data: created, error: aErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true })
+  if (aErr || !created.user) {
+    const taken = /already|registered|exists/i.test(aErr?.message ?? '')
+    return { ok: false, error: taken ? 'Ese email ya tiene cuenta. Usa otro.' : 'No se pudo crear la cuenta' }
+  }
+  const userId = created.user.id
+  // El teléfono es obligatorio en la tabla; para el personal no se usa.
+  const { error: uErr } = await admin.from('users').insert({ id: userId, rol: 'barbero', nombre: barber.nombre, telefono: '000000000', email })
+  const { error: lErr } = uErr ? { error: uErr } : await admin.from('barbers').update({ user_id: userId }).eq('id', barberId)
+  if (uErr || lErr) {
+    await admin.from('users').delete().eq('id', userId)
+    await admin.auth.admin.deleteUser(userId)
+    return { ok: false, error: 'No se pudo crear la cuenta' }
+  }
+  return done({ email })
+}
+
+export async function setBarberPassword(barberId: string, password: string): Promise<ActionResult> {
+  const s = await staff()
+  if (!s?.isAdmin) return NO_PERMISO
+  const parsed = accountSchema.pick({ barberId: true, password: true }).safeParse({ barberId, password })
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) }
+  const admin = createAdminClient()
+  const { data: barber } = await admin.from('barbers').select('user_id').eq('id', barberId).maybeSingle()
+  if (!barber?.user_id) return { ok: false, error: 'Este barbero no tiene cuenta' }
+  const { error } = await admin.auth.admin.updateUserById(barber.user_id, { password })
+  if (error) return { ok: false, error: 'No se pudo cambiar la contraseña' }
+  return { ok: true, data: undefined }
+}
+
+// Quita el acceso (p. ej. si deja de trabajar aquí). Sus citas y su ficha se quedan.
+export async function removeBarberAccount(barberId: string): Promise<ActionResult> {
+  const s = await staff()
+  if (!s?.isAdmin) return NO_PERMISO
+  if (!z.string().uuid().safeParse(barberId).success) return { ok: false, error: 'Datos inválidos' }
+  const admin = createAdminClient()
+  const { data: barber } = await admin.from('barbers').select('user_id').eq('id', barberId).maybeSingle()
+  const userId = barber?.user_id
+  if (!userId) return done(undefined)
+  const { data: u } = await admin.from('users').select('rol').eq('id', userId).maybeSingle()
+  if (u?.rol === 'admin') return { ok: false, error: 'No se puede quitar la cuenta del dueño' }
+  await admin.from('barbers').update({ user_id: null }).eq('id', barberId)
+  await admin.from('users').delete().eq('id', userId)
+  const { error } = await admin.auth.admin.deleteUser(userId)
+  if (error) return { ok: false, error: 'No se pudo quitar el acceso' }
+  return done(undefined)
 }
 
 // ─── Horario y fotos del local ────────────────────────────────────────────

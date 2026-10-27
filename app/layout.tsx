@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { siteConfig } from '@/config/site'
 import { themeVars } from '@/lib/brand'
 import { ServiceWorkerRegister } from '@/components/sw-register'
+import { OfflineBanner } from '@/components/offline'
 import './globals.css'
 
 const { theme } = siteConfig
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         {children}
         <ServiceWorkerRegister />
+        <OfflineBanner />
       </body>
     </html>
   )

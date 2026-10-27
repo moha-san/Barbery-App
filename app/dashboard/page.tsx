@@ -15,20 +15,21 @@ import { WaitlistRemove } from '@/components/dashboard/waitlist-remove'
 import { generateWhatsAppFreeSlotLink } from '@/lib/whatsapp'
 import type { AppointmentWithRelations } from '@/types/database'
 import { getShopSettings } from '@/lib/shop'
+import { getStaff } from '@/lib/staff'
 
 export const dynamic = 'force-dynamic'
 
 type Props = { searchParams: { fecha?: string; barbero?: string } }
 
 export default async function DashboardPage({ searchParams }: Props) {
-  const supabase = createSessionClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase.from('users').select('nombre, rol').eq('id', user.id).single()
-  if (!profile || profile.rol === 'cliente') {
+  const staff = await getStaff()
+  if (!staff) {
+    const {
+      data: { user },
+    } = await createSessionClient().auth.getUser()
+    if (!user) redirect('/login')
+  }
+  if (!staff) {
     return (
       <main className="mx-auto grid min-h-dvh max-w-md content-center px-4">
         <div className="card grid justify-items-center gap-3 p-8 text-center">
@@ -50,14 +51,14 @@ export default async function DashboardPage({ searchParams }: Props) {
   const dayStart = new TZDate(y, m - 1, d, 0, 0, siteConfig.timezone)
   const dayEnd = addDays(dayStart, 1)
 
-  const { data: barbersData } = await supabase.from('barbers').select('id, nombre').eq('activo', true).order('nombre')
-  const barbers = barbersData ?? []
-  const barbero = barbers.find((b) => b.id === searchParams.barbero)?.id
+  const { supabase, isAdmin, barberId: ownBarber } = staff
+  // Un barbero con cuenta propia solo ve lo suyo: no hay filtro, siempre él.
+  const barbero = ownBarber ?? (/^[0-9a-f-]{36}$/i.test(searchParams.barbero ?? '') ? searchParams.barbero : undefined)
   // Enlace que conserva el día y el barbero elegidos.
   const href = (f: string | undefined, b: string | undefined) => {
     const q = new URLSearchParams()
     if (f) q.set('fecha', f)
-    if (b) q.set('barbero', b)
+    if (b && !ownBarber) q.set('barbero', b)
     const qs = q.toString()
     return qs ? `/dashboard?${qs}` : '/dashboard'
   }
@@ -70,7 +71,8 @@ export default async function DashboardPage({ searchParams }: Props) {
     .neq('status', 'cancelada')
     .order('start_time')
   if (barbero) query = query.eq('barber_id', barbero)
-  const [{ data, error }, blocksRes, settings] = await Promise.all([
+  // Todo a la vez para que la agenda abra antes.
+  const [{ data, error }, blocksRes, settings, { data: barbersData }] = await Promise.all([
     query,
     supabase
       .from('time_off')
@@ -79,7 +81,9 @@ export default async function DashboardPage({ searchParams }: Props) {
       .gt('end_time', dayStart.toISOString())
       .order('start_time'),
     getShopSettings(),
+    ownBarber ? Promise.resolve({ data: [] as { id: string; nombre: string }[] }) : supabase.from('barbers').select('id, nombre').eq('activo', true).order('nombre'),
   ])
+  const barbers = barbersData ?? []
   // Bloqueos del día (vacaciones, descansos). Si la tabla aún no existe, no se enseña nada.
   const blocks = ((blocksRes.data ?? []) as unknown as { id: string; barber_id: string | null; start_time: string; end_time: string; motivo: string | null; barber: { nombre: string } | null }[])
     .filter((b) => !barbero || !b.barber_id || b.barber_id === barbero)
@@ -97,7 +101,6 @@ export default async function DashboardPage({ searchParams }: Props) {
   for (const r of pastRes.data ?? []) visits.set(r.client_id, (visits.get(r.client_id) ?? 0) + 1)
   const waitlist = ((waitRes.data ?? []) as unknown as { id: string; nombre: string; telefono: string; barber_id: string | null; barber: { nombre: string } | null; service: { nombre: string } | null }[])
     .filter((w) => !barbero || !w.barber_id || w.barber_id === barbero)
-  const isAdmin = profile.rol === 'admin'
   const pendientes = appointments.filter((a) => a.status === 'confirmada').length
   const hechas = appointments.filter((a) => a.status === 'completada').length
   // Caja: lo cobrado (citas completadas) y lo que falta por cobrar (confirmadas).
@@ -136,7 +139,7 @@ export default async function DashboardPage({ searchParams }: Props) {
 
       <section className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">Hola, {profile.nombre}</p>
+          <p className="eyebrow">Hola, {staff.nombre}</p>
           <h1 className="mt-2 text-3xl first-letter:uppercase sm:text-4xl">{formatDateLong(dayStart)}</h1>
         </div>
         <nav aria-label="Cambiar de día" className="flex gap-2">
