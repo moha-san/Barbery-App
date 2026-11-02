@@ -30,11 +30,13 @@ create table if not exists public.peticiones (
     check (estado in ('pendiente', 'confirmada', 'otra_hora', 'rechazada', 'cancelada')),
   recordada boolean not null default false, -- ya se le recordó al barbero
   cliente_avisado boolean not null default false, -- ya se le dijo al cliente que sigue pendiente
+  resena_pedida boolean not null default false, -- ya se le pidió la reseña de Google
   created_at timestamptz not null default now()
 );
 alter table public.peticiones add column if not exists local text not null default '';
 alter table public.peticiones add column if not exists recordada boolean not null default false;
 alter table public.peticiones add column if not exists cliente_avisado boolean not null default false;
+alter table public.peticiones add column if not exists resena_pedida boolean not null default false;
 create index if not exists peticiones_cliente_idx on public.peticiones (cliente_telefono, created_at desc);
 
 -- Lo que espera el bot de cada barbero (p. ej. que escriba la otra hora que propone).
@@ -44,11 +46,31 @@ create table if not exists public.esperas (
   created_at timestamptz not null default now()
 );
 
+-- Clientes a los que ya se escribió para que vuelvan (para no repetir).
+create table if not exists public.recuperados (
+  telefono text primary key,
+  enviado_at timestamptz not null default now()
+);
+
+-- Clientes con los que habla el dueño desde el panel: el bot no contesta hasta "hasta".
+create table if not exists public.pausas (
+  telefono text primary key,
+  hasta timestamptz not null
+);
+
+-- Días en que ya se mandó el resumen de la mañana al dueño.
+create table if not exists public.resumenes (
+  dia date primary key
+);
+
 -- Nadie entra desde fuera: RLS activado y sin políticas (el servidor usa service_role).
 alter table public.mensajes enable row level security;
 alter table public.recibidos enable row level security;
 alter table public.peticiones enable row level security;
 alter table public.esperas enable row level security;
+alter table public.recuperados enable row level security;
+alter table public.pausas enable row level security;
+alter table public.resumenes enable row level security;
 
 -- Recordatorios de citas sin contestar: llama al bot cada 5 minutos.
 -- Cambia la dirección y la contraseña (CRON_SECRET de Vercel) antes de ejecutarlo.

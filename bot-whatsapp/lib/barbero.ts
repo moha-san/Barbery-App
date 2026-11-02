@@ -1,13 +1,14 @@
 import { barberia } from '../config/barberia.ts'
-import { cambiarEstado, guardarMensaje, marcar, pendientesSin, ponerEspera, sacarEspera, verPeticion, type Peticion } from './db.ts'
+import { cambiarEstado, citasEntre, citasParaResena, primeraVezHoy, clientesParaVolver, marcarRecuperado, guardarMensaje, marcar, pendientesSin, ponerEspera, sacarEspera, verPeticion, type Peticion } from './db.ts'
 import { leerBoton, soloNumeros, type Entrante } from './entrada.ts'
-import { cuando } from './fechas.ts'
+import { cuando, horaLocal, hoyEn } from './fechas.ts'
 import { enviarAviso, enviarConBotones, enviarTexto } from './whatsapp.ts'
 
 // Lo que pasa en el lado del barbero: recibe la petición, la pasa a Booksy y pulsa un botón.
 
 const PLANTILLA_BARBERO = process.env.WHATSAPP_PLANTILLA_BARBERO || 'peticion_cita'
 const PLANTILLA_CLIENTE = process.env.WHATSAPP_PLANTILLA_CLIENTE || 'aviso_cita'
+const PLANTILLA_VOLVER = process.env.WHATSAPP_PLANTILLA_VOLVER || 'volver_cita'
 
 export const CUALQUIERA = 'el primero libre'
 
@@ -50,6 +51,18 @@ export async function avisarPeticion(p: Peticion, recordatorio = false): Promise
 
 export async function avisarCancelacion(p: Peticion): Promise<void> {
   await enviarAviso(telefonoDe(p), `❌ Cita cancelada por el cliente. Bórrala de Booksy: ${resumen(p)}`, PLANTILLA_CLIENTE)
+}
+
+// El cliente quiere algo que no es una cita normal (domicilio, evento…) o algo que el bot no sabe: se lo pasamos al dueño.
+export async function avisarDueno(telefono: string, nombre: string, motivo: string): Promise<void> {
+  const texto = `📣 Un cliente quiere hablar con vosotros\n${nombre} (+${telefono}): ${motivo}\n\nEscríbele: https://wa.me/${telefono}`
+  await enviarAviso(soloNumeros(barberia.whatsappDueno), texto, PLANTILLA_CLIENTE)
+}
+
+// Mientras el dueño contesta desde el panel, los mensajes del cliente le llegan también a su WhatsApp.
+export async function reenviarAlDueno(telefono: string, nombre: string, texto: string): Promise<void> {
+  if (!barberia.whatsappDueno) return
+  await enviarAviso(soloNumeros(barberia.whatsappDueno), `💬 ${nombre || 'Cliente'} (+${telefono}): ${texto}\n\nContesta desde el panel.`, PLANTILLA_CLIENTE)
 }
 
 // Mensaje al cliente que también queda en su conversación con el bot.
@@ -124,10 +137,27 @@ export async function atenderEquipo(m: Entrante): Promise<void> {
   return enviarTexto(m.de, 'Hola 👋 Soy el asistente de citas. Te mando aquí las citas que piden los clientes; tú solo tienes que pulsar los botones.')
 }
 
+// "Buenos días": las citas que ha traído el bot para hoy y las que siguen sin contestar.
+export async function mandarResumen(inicio: Date): Promise<void> {
+  const zona = barberia.zonaHoraria
+  const citas = await citasEntre(inicio, new Date(inicio.getTime() + 24 * 3_600_000))
+  const hora = (iso: string) => cuando(iso, zona).split(' a las ')[1]
+  const dia = cuando(inicio, zona).split(' a las ')[0]
+  const lineas = citas.map((c) => `• ${hora(c.inicio)} ${c.cliente_nombre}: ${c.servicio} con ${c.barbero}${enLocal(c)}${c.estado === 'pendiente' ? ' (⏳ sin contestar)' : ''}`)
+  const sinContestar = citas.filter((c) => c.estado === 'pendiente').length
+  const texto =
+    `☀️ Buenos días. Hoy, ${dia}, el asistente tiene ${citas.length === 1 ? '1 cita' : `${citas.length} citas`} en la agenda.` +
+    (lineas.length ? `\n\n${lineas.join('\n')}` : '') +
+    (sinContestar ? `\n\nOjo: ${sinContestar} sin contestar todavía.` : '')
+  await enviarAviso(soloNumeros(barberia.whatsappDueno), texto, PLANTILLA_CLIENTE)
+}
+
 // Lo llama el planificador cada 5 min: recuerda al barbero las citas sin contestar y, si tarda mucho, avisa al cliente.
-export async function revisarPendientes(): Promise<{ recordadas: number; clientes: number }> {
+export async function revisarPendientes(): Promise<{ recordadas: number; clientes: number; resenas: number; vuelven: number }> {
   let recordadas = 0
   let clientes = 0
+  let resenas = 0
+  let vuelven = 0
   for (const p of await pendientesSin('recordada', barberia.minutosRecordatorio)) {
     await marcar(p.id, 'recordada') // primero se marca: si el envío falla, no se repite en bucle
     await avisarPeticion(p, true).then(() => recordadas++, (e) => console.error('[recordatorio]', p.id, e))
@@ -140,5 +170,31 @@ export async function revisarPendientes(): Promise<{ recordadas: number; cliente
       (e) => console.error('[aviso cliente]', p.id, e),
     )
   }
-  return { recordadas, clientes }
+  // Unas horas después de la cita, se pide la reseña de Google (solo si hay enlace).
+  if (barberia.resenaGoogle) {
+    for (const p of await citasParaResena(barberia.horasResena)) {
+      await marcar(p.id, 'resena_pedida')
+      await decirAlCliente(
+        p.cliente_telefono,
+        `¡Gracias por venir, ${p.cliente_nombre}! Si te ha gustado, nos ayudas mucho con una reseña en Google (1 minuto): ${barberia.resenaGoogle}`,
+      ).then(() => resenas++, (e) => console.error('[reseña]', p.id, e))
+    }
+  }
+  // Clientes que llevan semanas sin venir: un mensaje para que vuelvan (solo de 11 a 20 h).
+  const hora = horaLocal(barberia.zonaHoraria)
+  if (barberia.semanasVolver > 0 && hora >= 11 && hora < 20) {
+    for (const p of await clientesParaVolver(barberia.semanasVolver)) {
+      await marcarRecuperado(p.cliente_telefono)
+      const texto = `¡Hola, ${p.cliente_nombre}! Ya toca repasar ese corte 💈 ¿Te busco hueco con ${p.barbero === CUALQUIERA ? 'nosotros' : p.barbero} esta semana? Dime día y hora y te lo pido.`
+      await enviarAviso(p.cliente_telefono, texto, PLANTILLA_VOLVER)
+        .then(() => guardarMensaje(p.cliente_telefono, 'bot', texto))
+        .then(() => vuelven++, (e) => console.error('[volver]', p.cliente_telefono, e))
+    }
+  }
+  // Resumen de la mañana para el dueño (una vez al día).
+  if (barberia.whatsappDueno && hora === barberia.horaResumen) {
+    const { inicio, dia } = hoyEn(barberia.zonaHoraria)
+    if (await primeraVezHoy(dia)) await mandarResumen(inicio).catch((e) => console.error('[resumen]', e))
+  }
+  return { recordadas, clientes, resenas, vuelven }
 }

@@ -30,16 +30,20 @@ supabase/bot.sql          Tablas: se pega en Supabase > SQL Editor
 
 ## Puesta en marcha (una vez por barbería)
 
-1. **Datos**: rellena `config/barberia.ts`: un bloque por local (dirección, horario, precios, barberos y el WhatsApp de cada barbero, que es donde reciben las citas; las de "el primero libre" van al WhatsApp del encargado del local).
+1. **Datos**: (opcional) pon `resenaGoogle` para pedir reseñas tras la cita y `semanasVolver` para escribir a quien lleva semanas sin venir. Después rellena `config/barberia.ts`: un bloque por local (dirección, horario, precios, barberos y el WhatsApp de cada barbero, que es donde reciben las citas; las de "el primero libre" van al WhatsApp del encargado del local).
 2. **Base de datos**: crea un proyecto en Supabase y pega `supabase/bot.sql` en SQL Editor > Run.
 3. **WhatsApp**: en developers.facebook.com crea una app de tipo "Empresa", añade el producto WhatsApp y registra el número de la barbería. Apunta el token, el "Phone number ID" y el "App secret".
 4. **Plantillas** (WhatsApp Manager > Plantillas, categoría "Utilidad", idioma español). Sirven para escribir a alguien que lleva más de 24 h sin hablar con el bot:
    - `peticion_cita`: texto `Tienes una cita nueva: {{1}}` y tres botones de respuesta rápida: `Hecho`, `Otra hora`, `No hay hueco` (en ese orden).
    - `aviso_cita`: texto `Mensaje de la barbería: {{1}}`.
+   - `volver_cita` (solo si usas `semanasVolver`, categoría Marketing): texto `{{1}}`. Cada envío cuesta unos céntimos.
 5. **IA**: crea una clave en console.anthropic.com.
 6. **Publicar**: en Vercel, nuevo proyecto con este repositorio y **Root Directory = `bot-whatsapp`**. Pon las variables de `.env.example`.
 7. **Recordatorios**: pon `CRON_SECRET` en Vercel y, en `supabase/bot.sql`, cambia `TU-BOT` y `TU_CRON_SECRET` por los tuyos (la última parte del archivo).
 8. **Conectar**: en Meta > WhatsApp > Configuración, webhook `https://TU-PROYECTO.vercel.app/api/whatsapp`, el mismo "verify token" que pusiste en Vercel, y suscríbete a `messages`.
+9. **Panel del dueño**: pon `PANEL_CLAVE` (una contraseña) en Vercel y entra en `https://TU-PROYECTO.vercel.app/panel`. Ahí se ven las conversaciones, las citas y los números del mes, y el dueño puede contestar él a un cliente (el bot se calla 2 horas con ese cliente). En el móvil, abre el panel y pulsa "Añadir a pantalla de inicio" para tenerlo como una app.
+
+Otros ajustes en `config/barberia.ts`: `maxMensajesDia` (tope de mensajes que contesta la IA a un cliente al día, por gasto) y `horaResumen` (hora del resumen de la mañana al dueño; -1 lo apaga). Si el cliente manda una foto del corte que quiere, al pedir la cita le llega también al barbero.
 
 ## Costes aproximados
 

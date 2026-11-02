@@ -86,11 +86,22 @@ export const barberia = {
   // Minutos sin contestar antes de recordárselo al barbero y de avisar al cliente.
   minutosRecordatorio: 10,
   minutosAvisoCliente: 30,
+  // Enlace para dejar reseña en Google (Google Maps > tu ficha > Compartir enlace de reseña).
+  // Si está puesto, el bot lo pide al cliente unas horas después de su cita. Vacío = no se pide.
+  resenaGoogle: '',
+  horasResena: 2,
+  // Semanas sin venir tras las que el bot escribe al cliente para que vuelva ("¿te busco hueco?"). 0 = apagado.
+  // Necesita la plantilla de marketing "volver_cita" aprobada en Meta (cada envío cuesta unos céntimos).
+  semanasVolver: 0,
+  // Mensajes al día que contesta la IA a un mismo cliente (para controlar el gasto).
+  maxMensajesDia: 40,
+  // Hora (0-23) a la que el dueño recibe cada mañana el resumen del día por WhatsApp. -1 = apagado.
+  horaResumen: 9,
   // Cualquier otra cosa que el bot deba saber (pago con tarjeta, aparcamiento, etc.).
   otrosDatos:
     'Email: hola@dradebbarber.com. Instagram: @barberiadradeb. ' +
     'Aimán es el fundador: hace servicios especiales, eventos y cortes a domicilio (con artistas y deportistas). ' +
-    'Para eso no pidas cita con pedir_cita: di que escriban a este WhatsApp contando qué quieren y el dueño les contesta. ' +
+    'Para eso no pidas cita con pedir_cita: pregunta qué quieren (día, sitio, cuántas personas) y usa avisar_al_dueno. ' +
     'Hay dos Juan: Juan José Varela (Centro) y Juan Pedro (Alameda); si dicen solo "Juan", pregunta cuál.',
 }
 

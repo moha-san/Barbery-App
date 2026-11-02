@@ -1,8 +1,9 @@
 import { waitUntil } from '@vercel/functions'
 import { responder } from '../../../lib/agente.ts'
-import { atenderEquipo, esDelEquipo } from '../../../lib/barbero.ts'
-import { guardarMensaje, marcarRecibido } from '../../../lib/db.ts'
-import { leerWebhook, type Entrante } from '../../../lib/entrada.ts'
+import { atenderEquipo, esDelEquipo, reenviarAlDueno } from '../../../lib/barbero.ts'
+import { barberia } from '../../../config/barberia.ts'
+import { guardarMensaje, marcarRecibido, mensajesHoy, pausadoHasta } from '../../../lib/db.ts'
+import { leerWebhook, textoFoto, type Entrante } from '../../../lib/entrada.ts'
 import { enviarTexto, firmaValida } from '../../../lib/whatsapp.ts'
 
 export const dynamic = 'force-dynamic'
@@ -21,8 +22,19 @@ async function atender(m: Entrante) {
     if (esDelEquipo(m.de)) return await atenderEquipo(m)
 
     // Si un cliente pulsa un botón viejo, lo tratamos como texto.
-    const texto = m.texto || m.boton || ''
+    const texto = m.foto ? textoFoto(m.foto, m.texto) : m.texto || m.boton || ''
     await guardarMensaje(m.de, 'cliente', texto)
+    // Tope de mensajes al día por cliente, para que nadie dispare el gasto de la IA.
+    const hoy = await mensajesHoy(m.de)
+    if (hoy > barberia.maxMensajesDia) {
+      if (hoy === barberia.maxMensajesDia + 1) {
+        const llamar = barberia.telefono ? ` Si es urgente, llama al ${barberia.telefono}.` : ''
+        await enviarTexto(m.de, `Por hoy ya no puedo contestar más mensajes. Mañana sigo contigo.${llamar}`)
+      }
+      return
+    }
+    // El dueño está hablando con este cliente desde el panel: el bot no contesta, solo le pasa el mensaje.
+    if (await pausadoHasta(m.de)) return await reenviarAlDueno(m.de, m.nombre, texto)
     const respuesta = await responder(m.de, m.nombre)
     await enviarTexto(m.de, respuesta)
     await guardarMensaje(m.de, 'bot', respuesta)
