@@ -43,11 +43,11 @@ export function leerWebhook(body: unknown): Entrante[] {
   return out
 }
 
-export type AccionBoton = { accion: 'hecho' | 'otra' | 'no'; peticionId: number }
+export type AccionBoton = { accion: 'hecho' | 'otra' | 'no' | 'mas30' | 'mas60' | 'escribir'; peticionId: number }
 
-// Botones del aviso al barbero: "hecho:12", "otra:12", "no:12".
+// Botones del aviso al barbero: "hecho:12", "otra:12", "no:12" y, tras "Otra hora", "mas30:12", "mas60:12", "escribir:12".
 export function leerBoton(id: string | null): AccionBoton | null {
-  const m = /^(hecho|otra|no):(\d+)$/.exec(id ?? '')
+  const m = /^(hecho|otra|no|mas30|mas60|escribir):(\d+)$/.exec(id ?? '')
   return m ? { accion: m[1] as AccionBoton['accion'], peticionId: Number(m[2]) } : null
 }
 

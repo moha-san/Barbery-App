@@ -34,6 +34,7 @@ test('ignora avisos de estado (sin mensajes) y basura', () => {
 
 test('leerBoton', () => {
   assert.deepEqual(leerBoton('no:12'), { accion: 'no', peticionId: 12 })
+  assert.deepEqual(leerBoton('mas30:3'), { accion: 'mas30', peticionId: 3 })
   assert.equal(leerBoton('borrar:12'), null)
   assert.equal(leerBoton(null), null)
 })

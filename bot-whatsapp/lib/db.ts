@@ -14,6 +14,9 @@ export type Peticion = {
   barbero: string
   inicio: string
   estado: 'pendiente' | 'confirmada' | 'otra_hora' | 'rechazada' | 'cancelada'
+  recordada?: boolean
+  cliente_avisado?: boolean
+  created_at?: string
 }
 
 function ok<T>(r: { data: T; error: { message: string } | null }): T {
@@ -74,4 +77,21 @@ export async function ponerEspera(telefono: string, peticionId: number) {
 export async function sacarEspera(telefono: string): Promise<number | null> {
   const data = ok(await db().from('esperas').delete().eq('telefono', telefono).select('peticion_id')) as { peticion_id: number }[]
   return data[0]?.peticion_id ?? null
+}
+
+// Citas sin contestar desde hace más de `minutos` y que aún no tienen ese aviso.
+export async function pendientesSin(campo: 'recordada' | 'cliente_avisado', minutos: number): Promise<Peticion[]> {
+  return ok(
+    await db()
+      .from('peticiones')
+      .select('*')
+      .eq('estado', 'pendiente')
+      .eq(campo, false)
+      .lt('created_at', new Date(Date.now() - minutos * 60_000).toISOString())
+      .gt('inicio', new Date().toISOString()),
+  ) as Peticion[]
+}
+
+export async function marcar(id: number, campo: 'recordada' | 'cliente_avisado') {
+  ok(await db().from('peticiones').update({ [campo]: true }).eq('id', id))
 }

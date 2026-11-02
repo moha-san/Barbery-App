@@ -8,9 +8,10 @@ Proyecto aparte de la app de reservas. No usa nada de ella.
 2. La IA contesta las dudas con los datos de `config/barberia.ts` y, para una cita, pregunta solo lo que falte (servicio, barbero, día, hora y nombre).
 3. Al barbero le llega por WhatsApp: "📅 Nueva cita para pasar a Booksy: Juan, corte con Adrián, jueves a las 20:00", con tres botones:
    - **Hecho**: ya la ha apuntado en Booksy. El bot se lo confirma al cliente.
-   - **Otra hora**: el bot le pregunta qué hora propone y se la ofrece al cliente.
+   - **Otra hora**: le salen dos botones con la hora 30 min y 1 h más tarde, o "Escribir otra". El bot se la ofrece al cliente.
    - **No hay hueco**: el bot le pide al cliente otra hora u otro día.
-4. El cliente también puede preguntar por sus citas o cancelar una. Si cancela, el barbero recibe un aviso para borrarla de Booksy.
+4. Si el barbero no contesta en 10 minutos, se lo recuerda; a los 30, el bot avisa al cliente de que sigue pendiente (y le da el teléfono si está puesto). Se cambia en `config/barberia.ts`.
+5. El cliente también puede preguntar por sus citas o cancelar una. Si cancela, el barbero recibe un aviso para borrarla de Booksy.
 
 El bot no ve la agenda de Booksy, porque Booksy no deja conectarse sin ser socio (ver `/mnt/project-files/bot-whatsapp/mensaje-booksy.md`). Si Booksy nos acepta, el botón "Hecho" podrá guardar la cita en Booksy él solo.
 
@@ -19,6 +20,7 @@ El bot no ve la agenda de Booksy, porque Booksy no deja conectarse sin ser socio
 ```
 config/barberia.ts        Datos de la barbería: lo único que se cambia para cada cliente
 app/api/whatsapp/route.ts Dirección a la que WhatsApp manda los mensajes
+app/api/recordatorios/    Recordatorios de citas sin contestar (Supabase lo llama cada 5 min)
 lib/agente.ts             La IA que habla con el cliente (Claude)
 lib/barbero.ts            Avisos y botones del barbero
 lib/whatsapp.ts           Envío de mensajes (API oficial de WhatsApp de Meta)
@@ -36,7 +38,8 @@ supabase/bot.sql          Tablas: se pega en Supabase > SQL Editor
    - `aviso_cita`: texto `Mensaje de la barbería: {{1}}`.
 5. **IA**: crea una clave en console.anthropic.com.
 6. **Publicar**: en Vercel, nuevo proyecto con este repositorio y **Root Directory = `bot-whatsapp`**. Pon las variables de `.env.example`.
-7. **Conectar**: en Meta > WhatsApp > Configuración, webhook `https://TU-PROYECTO.vercel.app/api/whatsapp`, el mismo "verify token" que pusiste en Vercel, y suscríbete a `messages`.
+7. **Recordatorios**: pon `CRON_SECRET` en Vercel y, en `supabase/bot.sql`, cambia `TU-BOT` y `TU_CRON_SECRET` por los tuyos (la última parte del archivo).
+8. **Conectar**: en Meta > WhatsApp > Configuración, webhook `https://TU-PROYECTO.vercel.app/api/whatsapp`, el mismo "verify token" que pusiste en Vercel, y suscríbete a `messages`.
 
 ## Costes aproximados
 

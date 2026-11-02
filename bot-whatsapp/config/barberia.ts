@@ -13,6 +13,8 @@ export const barberia = {
   direccion: 'C. Tres de Abril, Molina de Segura (Murcia)',
   // Enlace de la página de Booksy de la barbería (por si el cliente prefiere reservar él mismo).
   booksyUrl: '',
+  // Teléfono para llamar (se lo damos al cliente si el barbero tarda en contestar).
+  telefono: '',
   // WhatsApp del dueño: recibe las peticiones de los barberos sin número y los avisos de cancelación.
   whatsappDueno: '',
   zonaHoraria: 'Europe/Madrid',
@@ -28,6 +30,9 @@ export const barberia = {
     { nombre: 'Josiko', whatsapp: '' },
     { nombre: 'Adrián', whatsapp: '' },
   ] satisfies Barbero[],
+  // Minutos sin contestar antes de recordárselo al barbero y de avisar al cliente.
+  minutosRecordatorio: 10,
+  minutosAvisoCliente: 30,
   // Cualquier otra cosa que el bot deba saber (pago con tarjeta, aparcamiento, etc.).
   otrosDatos: 'Se puede pagar en efectivo o con tarjeta.',
 }
