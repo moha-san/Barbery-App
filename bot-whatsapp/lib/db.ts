@@ -131,6 +131,34 @@ export async function marcarRecuperado(telefono: string) {
   ok(await db().from('recuperados').upsert({ telefono, enviado_at: new Date().toISOString() }))
 }
 
+// Mensajes que ha escrito hoy este cliente (desde las 00:00 UTC).
+export async function mensajesHoy(telefono: string): Promise<number> {
+  const desde = new Date()
+  desde.setUTCHours(0, 0, 0, 0)
+  const { count, error } = await db()
+    .from('mensajes')
+    .select('id', { count: 'exact', head: true })
+    .eq('telefono', telefono)
+    .eq('rol', 'cliente')
+    .gte('created_at', desde.toISOString())
+  if (error) throw new Error(error.message)
+  return count ?? 0
+}
+
+// true solo la primera vez que se llama para ese día (para mandar el resumen una vez).
+export async function primeraVezHoy(dia: string): Promise<boolean> {
+  const { error } = await db().from('resumenes').insert({ dia })
+  if (!error) return true
+  if (error.code === '23505') return false
+  throw new Error(error.message)
+}
+
+export async function citasEntre(desde: Date, hasta: Date): Promise<Peticion[]> {
+  return ok(
+    await db().from('peticiones').select('*').gte('inicio', desde.toISOString()).lt('inicio', hasta.toISOString()).in('estado', ['pendiente', 'confirmada']).order('inicio'),
+  ) as Peticion[]
+}
+
 // ── Panel del dueño ──
 
 export type Mensaje = { telefono: string; rol: 'cliente' | 'bot'; texto: string; created_at: string }

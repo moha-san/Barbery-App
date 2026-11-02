@@ -43,6 +43,8 @@ supabase/bot.sql          Tablas: se pega en Supabase > SQL Editor
 8. **Conectar**: en Meta > WhatsApp > Configuración, webhook `https://TU-PROYECTO.vercel.app/api/whatsapp`, el mismo "verify token" que pusiste en Vercel, y suscríbete a `messages`.
 9. **Panel del dueño**: pon `PANEL_CLAVE` (una contraseña) en Vercel y entra en `https://TU-PROYECTO.vercel.app/panel`. Ahí se ven las conversaciones, las citas y los números del mes, y el dueño puede contestar él a un cliente (el bot se calla 2 horas con ese cliente).
 
+Otros ajustes en `config/barberia.ts`: `maxMensajesDia` (tope de mensajes que contesta la IA a un cliente al día, por gasto) y `horaResumen` (hora del resumen de la mañana al dueño; -1 lo apaga). Si el cliente manda una foto del corte que quiere, al pedir la cita le llega también al barbero.
+
 ## Costes aproximados
 
 - WhatsApp: las respuestas a un cliente que acaba de escribir son gratis. Las plantillas (avisos tras más de 24 h) cuestan unos céntimos cada una.

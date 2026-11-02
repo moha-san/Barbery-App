@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { leerBoton, leerWebhook, paraPlantilla } from './entrada.ts'
+import { leerBoton, leerWebhook, paraPlantilla, textoFoto, ultimaFoto } from './entrada.ts'
 
 const webhook = (messages: unknown[]) => ({
   entry: [{ changes: [{ value: { contacts: [{ wa_id: '34600111222', profile: { name: 'Juan' } }], messages } }] }],
@@ -8,7 +8,7 @@ const webhook = (messages: unknown[]) => ({
 
 test('lee un texto del cliente', () => {
   const [m] = leerWebhook(webhook([{ id: 'w1', from: '34600111222', type: 'text', text: { body: ' Cita a las 8 ' } }]))
-  assert.deepEqual(m, { waId: 'w1', de: '34600111222', nombre: 'Juan', texto: 'Cita a las 8', boton: null })
+  assert.deepEqual(m, { waId: 'w1', de: '34600111222', nombre: 'Juan', texto: 'Cita a las 8', boton: null, foto: null })
 })
 
 test('lee el botón de un mensaje normal y el de una plantilla', () => {
@@ -41,4 +41,13 @@ test('leerBoton', () => {
 
 test('paraPlantilla quita saltos de línea', () => {
   assert.equal(paraPlantilla('Juan\n\nCorte   y barba'), 'Juan · Corte y barba')
+})
+
+test('una foto guarda su id y su pie', () => {
+  const [m] = leerWebhook(webhook([{ id: 'w5', from: '34600111222', type: 'image', image: { id: 'MEDIA1', caption: 'Así lo quiero' } }]))
+  assert.equal(m.foto, 'MEDIA1')
+  assert.equal(m.texto, 'Así lo quiero')
+  const hist = [{ rol: 'cliente', texto: textoFoto('MEDIA1', m.texto) }, { rol: 'bot', texto: 'Vale' }]
+  assert.equal(ultimaFoto(hist), 'MEDIA1')
+  assert.equal(ultimaFoto([{ rol: 'cliente', texto: 'hola' }]), null)
 })

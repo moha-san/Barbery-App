@@ -7,6 +7,7 @@ export type Entrante = {
   nombre: string // nombre de su perfil de WhatsApp
   texto: string // lo que escribió (vacío si pulsó un botón)
   boton: string | null // id del botón pulsado ("hecho:12")
+  foto?: string | null // id de la foto en WhatsApp, si mandó una (el texto es su pie de foto)
 }
 
 type Mensaje = {
@@ -14,6 +15,7 @@ type Mensaje = {
   from?: string
   type?: string
   text?: { body?: string }
+  image?: { id?: string; caption?: string }
   button?: { payload?: string; text?: string }
   interactive?: { button_reply?: { id?: string; title?: string } }
 }
@@ -31,12 +33,13 @@ export function leerWebhook(body: unknown): Entrante[] {
         const nombre = value?.contacts?.find((c) => c.wa_id === m.from)?.profile?.name ?? ''
         // Botón de mensaje normal (interactive) o de plantilla (button).
         const boton = m.interactive?.button_reply?.id ?? m.button?.payload ?? null
-        let texto = m.text?.body ?? ''
-        if (!texto && !boton) {
+        const foto = m.type === 'image' ? (m.image?.id ?? null) : null
+        let texto = m.text?.body ?? m.image?.caption ?? ''
+        if (!texto && !boton && !foto) {
           // Audio, foto, ubicación…: el bot pide que lo escriba.
           texto = `[El cliente ha enviado un mensaje de tipo "${m.type ?? 'desconocido'}" que no es texto]`
         }
-        out.push({ waId: m.id, de: m.from, nombre, texto: texto.trim(), boton })
+        out.push({ waId: m.id, de: m.from, nombre, texto: texto.trim(), boton, foto })
       }
     }
   }
@@ -50,6 +53,11 @@ export function leerBoton(id: string | null): AccionBoton | null {
   const m = /^(hecho|otra|no|mas30|mas60|escribir):(\d+)$/.exec(id ?? '')
   return m ? { accion: m[1] as AccionBoton['accion'], peticionId: Number(m[2]) } : null
 }
+
+// Cómo se guarda una foto en la conversación: el bot la ve como texto y el id sirve para reenviarla al barbero.
+export const textoFoto = (id: string, pie: string) => `[foto ${id}] El cliente ha enviado una foto${pie ? ` con el texto: ${pie}` : ''}`
+export const ultimaFoto = (mensajes: { rol: string; texto: string }[]) =>
+  [...mensajes].reverse().find((m) => m.rol === 'cliente' && m.texto.startsWith('[foto '))?.texto.match(/^\[foto (\S+)\]/)?.[1] ?? null
 
 export const soloNumeros = (tel: string) => tel.replace(/\D/g, '')
 

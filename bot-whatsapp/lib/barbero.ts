@@ -1,7 +1,7 @@
 import { barberia } from '../config/barberia.ts'
-import { cambiarEstado, citasParaResena, clientesParaVolver, marcarRecuperado, guardarMensaje, marcar, pendientesSin, ponerEspera, sacarEspera, verPeticion, type Peticion } from './db.ts'
+import { cambiarEstado, citasEntre, citasParaResena, primeraVezHoy, clientesParaVolver, marcarRecuperado, guardarMensaje, marcar, pendientesSin, ponerEspera, sacarEspera, verPeticion, type Peticion } from './db.ts'
 import { leerBoton, soloNumeros, type Entrante } from './entrada.ts'
-import { cuando, horaLocal } from './fechas.ts'
+import { cuando, horaLocal, hoyEn } from './fechas.ts'
 import { enviarAviso, enviarConBotones, enviarTexto } from './whatsapp.ts'
 
 // Lo que pasa en el lado del barbero: recibe la petición, la pasa a Booksy y pulsa un botón.
@@ -137,6 +137,21 @@ export async function atenderEquipo(m: Entrante): Promise<void> {
   return enviarTexto(m.de, 'Hola 👋 Soy el asistente de citas. Te mando aquí las citas que piden los clientes; tú solo tienes que pulsar los botones.')
 }
 
+// "Buenos días": las citas que ha traído el bot para hoy y las que siguen sin contestar.
+export async function mandarResumen(inicio: Date): Promise<void> {
+  const zona = barberia.zonaHoraria
+  const citas = await citasEntre(inicio, new Date(inicio.getTime() + 24 * 3_600_000))
+  const hora = (iso: string) => cuando(iso, zona).split(' a las ')[1]
+  const dia = cuando(inicio, zona).split(' a las ')[0]
+  const lineas = citas.map((c) => `• ${hora(c.inicio)} ${c.cliente_nombre}: ${c.servicio} con ${c.barbero}${enLocal(c)}${c.estado === 'pendiente' ? ' (⏳ sin contestar)' : ''}`)
+  const sinContestar = citas.filter((c) => c.estado === 'pendiente').length
+  const texto =
+    `☀️ Buenos días. Hoy, ${dia}, el asistente tiene ${citas.length === 1 ? '1 cita' : `${citas.length} citas`} en la agenda.` +
+    (lineas.length ? `\n\n${lineas.join('\n')}` : '') +
+    (sinContestar ? `\n\nOjo: ${sinContestar} sin contestar todavía.` : '')
+  await enviarAviso(soloNumeros(barberia.whatsappDueno), texto, PLANTILLA_CLIENTE)
+}
+
 // Lo llama el planificador cada 5 min: recuerda al barbero las citas sin contestar y, si tarda mucho, avisa al cliente.
 export async function revisarPendientes(): Promise<{ recordadas: number; clientes: number; resenas: number; vuelven: number }> {
   let recordadas = 0
@@ -175,6 +190,11 @@ export async function revisarPendientes(): Promise<{ recordadas: number; cliente
         .then(() => guardarMensaje(p.cliente_telefono, 'bot', texto))
         .then(() => vuelven++, (e) => console.error('[volver]', p.cliente_telefono, e))
     }
+  }
+  // Resumen de la mañana para el dueño (una vez al día).
+  if (barberia.whatsappDueno && hora === barberia.horaResumen) {
+    const { inicio, dia } = hoyEn(barberia.zonaHoraria)
+    if (await primeraVezHoy(dia)) await mandarResumen(inicio).catch((e) => console.error('[resumen]', e))
   }
   return { recordadas, clientes, resenas, vuelven }
 }

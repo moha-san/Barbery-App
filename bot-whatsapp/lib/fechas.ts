@@ -18,6 +18,13 @@ export function aInstante(fecha: string, hora: string, zona: string): Date | nul
 // Hora del día (0-23) ahora mismo en la barbería.
 export const horaLocal = (zona: string) => new TZDate(Date.now(), zona).getHours()
 
+// Las 00:00 de hoy en la barbería, y el día en formato AAAA-MM-DD.
+export function hoyEn(zona: string): { inicio: Date; dia: string } {
+  const ahora = new TZDate(Date.now(), zona)
+  const inicio = new TZDate(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), zona)
+  return { inicio: new Date(inicio.getTime()), dia: format(inicio, 'yyyy-MM-dd') }
+}
+
 // "jueves 6 de noviembre a las 20:00"
 export const cuando = (iso: string | Date, zona: string) =>
   format(new TZDate(new Date(iso).getTime(), zona), "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })

@@ -59,6 +59,10 @@ mock.module(aqui('../lib/db.ts'), {
     },
     marcarRecuperado: async (tel: string) => void tablas.recuperados.add(tel),
     pausadoHasta: async (tel: string) => ((tablas.pausas.get(tel) ?? 0) > Date.now() ? new Date(tablas.pausas.get(tel)!) : null),
+    mensajesHoy: async (tel: string) => tablas.mensajes.filter((m) => m.telefono === tel && m.rol === 'cliente').length,
+    primeraVezHoy: async () => true,
+    citasEntre: async (desde: Date, hasta: Date) =>
+      tablas.peticiones.filter((p) => ['pendiente', 'confirmada'].includes(p.estado as string) && Date.parse(p.inicio as string) >= desde.getTime() && Date.parse(p.inicio as string) < hasta.getTime()),
     marcar: async (id: number, campo: string) => void (tablas.peticiones.find((p) => p.id === id)![campo] = true),
     ponerEspera: async (tel: string, id: number) => void tablas.esperas.set(tel, id),
     sacarEspera: async (tel: string) => {
@@ -108,6 +112,10 @@ function iaFalsa(body: { messages: { role: string; content: unknown }[] }) {
 globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input instanceof Request ? input.url : input)
   const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
+  // Fotos: info de la foto, descarga y subida de nuevo.
+  if (url.endsWith('/MEDIA1')) return Response.json({ url: 'https://lookaside.fbsbx.com/foto', mime_type: 'image/jpeg' })
+  if (url.includes('lookaside.fbsbx.com')) return new Response(new Uint8Array([1, 2, 3]))
+  if (url.endsWith('/media')) return Response.json({ id: 'FOTO-SUBIDA' })
   const raw = init?.body ?? (input instanceof Request ? await input.text() : '')
   const body = JSON.parse(typeof raw === 'string' ? raw : new TextDecoder().decode(raw as ArrayBuffer))
   if (url.includes('graph.facebook.com')) {
@@ -115,7 +123,7 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       fallarVentanaUnaVez = false
       return Response.json({ error: { message: 'Re-engagement message', code: 131047 } }, { status: 400 })
     }
-    const texto = body.text?.body ?? body.interactive?.body?.text ?? `[plantilla ${body.template?.name}] ${body.template?.components?.[0]?.parameters?.[0]?.text}`
+    const texto = body.text?.body ?? body.interactive?.body?.text ?? (body.image ? `[foto ${body.image.id}] ${body.image.caption}` : undefined) ?? `[plantilla ${body.template?.name}] ${body.template?.components?.[0]?.parameters?.[0]?.text}`
     const botones = body.interactive?.action?.buttons?.map((b: { reply: { id: string } }) => b.reply.id) ??
       body.template?.components?.slice(1).map((c: { parameters: { payload: string }[] }) => c.parameters[0].payload) ?? []
     enviados.push({ to: body.to, tipo: body.type, texto, botones })
@@ -134,9 +142,11 @@ const { POST } = await import(aqui('../app/api/whatsapp/route.ts'))
 // ── Conversación ──
 let n = 0
 async function llega(de: string, texto: string, boton?: string) {
-  const mensaje = boton
-    ? { id: `w${++n}`, from: de, type: 'interactive', interactive: { button_reply: { id: boton, title: boton } } }
-    : { id: `w${++n}`, from: de, type: 'text', text: { body: texto } }
+  const mensaje = boton === 'FOTO'
+    ? { id: `w${++n}`, from: de, type: 'image', image: { id: 'MEDIA1', caption: texto } }
+    : boton
+      ? { id: `w${++n}`, from: de, type: 'interactive', interactive: { button_reply: { id: boton, title: boton } } }
+      : { id: `w${++n}`, from: de, type: 'text', text: { body: texto } }
   const cuerpo = JSON.stringify({ entry: [{ changes: [{ value: { contacts: [{ wa_id: de, profile: { name: 'Juan' } }], messages: [mensaje] } }] }] })
   const firma = 'sha256=' + createHmac('sha256', SECRETO).update(cuerpo).digest('hex')
   const antes = enviados.length
@@ -226,6 +236,28 @@ assert.equal(ultimoA(r, CLIENTE), undefined, 'el bot no contesta')
 assert.match(ultimoA(r, DUENO)!.texto, /a qué hora venís/)
 tablas.pausas.clear()
 
+// Foto del corte: al pedir la cita, la foto le llega también al barbero.
+r = await llega(CLIENTE, 'Así lo quiero', 'FOTO')
+r = await llega(CLIENTE, 'Quiero cita el viernes a las 8 con Adrián')
+assert.match(ultimoA(r, ADRIAN)!.texto, /^\[foto FOTO-SUBIDA\] Foto de Juan/)
+
+// Resumen de la mañana para el dueño.
+const { mandarResumen } = await import(aqui('../lib/barbero.ts'))
+const hoy = new Date(Date.now() - 3_600_000)
+tablas.peticiones.push({ id: 101, cliente_telefono: '34699000777', cliente_nombre: 'Dani', local: 'Centro', servicio: 'Corte clásico con perfilado básico', barbero: 'Jared', inicio: new Date(Date.now() + 3_600_000).toISOString(), estado: 'pendiente' })
+antesR = enviados.length
+await mandarResumen(hoy)
+const resumen = enviados.slice(antesR).find((e) => e.to === DUENO)!.texto
+assert.match(resumen, /Buenos días.*Dani.*sin contestar/s)
+console.log(`\n▶ [resumen de la mañana]\n  ◀ bot → dueño: ${resumen}`)
+
+// Tope de mensajes al día: al pasarse, avisa una vez y luego se calla.
+const PESADO = '34600999999'
+let ultimos: Enviado[] = []
+for (let i = 0; i < 42; i++) ultimos = await llega(PESADO, `hola ${i}`)
+assert.equal(ultimos.length, 0, 'mensaje 42: silencio')
+assert.ok(enviados.some((e) => e.to === PESADO && /Por hoy ya no puedo/.test(e.texto)))
+
 // El mismo mensaje dos veces (WhatsApp a veces lo repite): solo se contesta una.
 const cuerpo = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ id: 'w1', from: CLIENTE, type: 'text', text: { body: 'hola' } }] } }] }] })
 const antes = enviados.length
@@ -241,4 +273,4 @@ assert.ok(peticionesIA.every((p) => p.fallbacks === 'default' && p.betas?.includ
 assert.match(peticionesIA[0].system, /Barbería Dradeb/)
 assert.match(peticionesIA[0].system, /San Ginés/)
 
-console.log('\n✅ Simulación correcta: dudas, cita, otra hora, confirmación, cancelación, encargo al dueño, el dueño contesta, reseña, clientes que vuelven, repetidos y firma.')
+console.log('\n✅ Simulación correcta: dudas, cita, otra hora, confirmación, cancelación, encargo al dueño, el dueño contesta, foto, resumen, tope diario, reseña, clientes que vuelven, repetidos y firma.')

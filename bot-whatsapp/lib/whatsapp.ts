@@ -76,6 +76,21 @@ export async function enviarAviso(to: string, texto: string, plantilla: string):
   }
 }
 
+// Reenvía una foto que mandó un cliente: se descarga de Meta y se vuelve a subir para mandarla a otro número.
+export async function reenviarFoto(to: string, mediaId: string, pie: string): Promise<void> {
+  const auth = { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}` }
+  const info = (await (await fetch(`${API}/${mediaId}`, { headers: auth })).json()) as { url?: string; mime_type?: string }
+  if (!info.url) throw new Error('Foto no encontrada en WhatsApp')
+  const datos = await (await fetch(info.url, { headers: auth })).blob()
+  const form = new FormData()
+  form.append('messaging_product', 'whatsapp')
+  form.append('type', info.mime_type ?? 'image/jpeg')
+  form.append('file', datos, 'foto.jpg')
+  const subida = (await (await fetch(`${API}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/media`, { method: 'POST', headers: auth, body: form })).json()) as { id?: string }
+  if (!subida.id) throw new Error('No se pudo subir la foto')
+  await enviar({ to, type: 'image', image: { id: subida.id, caption: pie.slice(0, 1000) } })
+}
+
 // Comprueba que el mensaje viene de verdad de Meta (cabecera X-Hub-Signature-256).
 export function firmaValida(cuerpo: string, firma: string | null, secreto: string): boolean {
   if (!firma?.startsWith('sha256=')) return false

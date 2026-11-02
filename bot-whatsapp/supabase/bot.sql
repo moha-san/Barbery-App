@@ -58,6 +58,11 @@ create table if not exists public.pausas (
   hasta timestamptz not null
 );
 
+-- Días en que ya se mandó el resumen de la mañana al dueño.
+create table if not exists public.resumenes (
+  dia date primary key
+);
+
 -- Nadie entra desde fuera: RLS activado y sin políticas (el servidor usa service_role).
 alter table public.mensajes enable row level security;
 alter table public.recibidos enable row level security;
@@ -65,6 +70,7 @@ alter table public.peticiones enable row level security;
 alter table public.esperas enable row level security;
 alter table public.recuperados enable row level security;
 alter table public.pausas enable row level security;
+alter table public.resumenes enable row level security;
 
 -- Recordatorios de citas sin contestar: llama al bot cada 5 minutos.
 -- Cambia la dirección y la contraseña (CRON_SECRET de Vercel) antes de ejecutarlo.

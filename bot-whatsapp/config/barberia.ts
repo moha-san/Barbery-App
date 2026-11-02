@@ -93,6 +93,10 @@ export const barberia = {
   // Semanas sin venir tras las que el bot escribe al cliente para que vuelva ("¿te busco hueco?"). 0 = apagado.
   // Necesita la plantilla de marketing "volver_cita" aprobada en Meta (cada envío cuesta unos céntimos).
   semanasVolver: 0,
+  // Mensajes al día que contesta la IA a un mismo cliente (para controlar el gasto).
+  maxMensajesDia: 40,
+  // Hora (0-23) a la que el dueño recibe cada mañana el resumen del día por WhatsApp. -1 = apagado.
+  horaResumen: 9,
   // Cualquier otra cosa que el bot deba saber (pago con tarjeta, aparcamiento, etc.).
   otrosDatos:
     'Email: hola@dradebbarber.com. Instagram: @barberiadradeb. ' +
