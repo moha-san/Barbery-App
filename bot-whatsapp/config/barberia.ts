@@ -86,11 +86,15 @@ export const barberia = {
   // Minutos sin contestar antes de recordárselo al barbero y de avisar al cliente.
   minutosRecordatorio: 10,
   minutosAvisoCliente: 30,
+  // Enlace para dejar reseña en Google (Google Maps > tu ficha > Compartir enlace de reseña).
+  // Si está puesto, el bot lo pide al cliente unas horas después de su cita. Vacío = no se pide.
+  resenaGoogle: '',
+  horasResena: 2,
   // Cualquier otra cosa que el bot deba saber (pago con tarjeta, aparcamiento, etc.).
   otrosDatos:
     'Email: hola@dradebbarber.com. Instagram: @barberiadradeb. ' +
     'Aimán es el fundador: hace servicios especiales, eventos y cortes a domicilio (con artistas y deportistas). ' +
-    'Para eso no pidas cita con pedir_cita: di que escriban a este WhatsApp contando qué quieren y el dueño les contesta. ' +
+    'Para eso no pidas cita con pedir_cita: pregunta qué quieren (día, sitio, cuántas personas) y usa avisar_al_dueno. ' +
     'Hay dos Juan: Juan José Varela (Centro) y Juan Pedro (Alameda); si dicen solo "Juan", pregunta cuál.',
 }
 

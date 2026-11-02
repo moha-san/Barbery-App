@@ -17,6 +17,7 @@ export type Peticion = {
   estado: 'pendiente' | 'confirmada' | 'otra_hora' | 'rechazada' | 'cancelada'
   recordada?: boolean
   cliente_avisado?: boolean
+  resena_pedida?: boolean
   created_at?: string
 }
 
@@ -93,6 +94,20 @@ export async function pendientesSin(campo: 'recordada' | 'cliente_avisado', minu
   ) as Peticion[]
 }
 
-export async function marcar(id: number, campo: 'recordada' | 'cliente_avisado') {
+// Citas confirmadas que ya pasaron hace más de X horas (y menos de un día) y a las que no se ha pedido reseña.
+export async function citasParaResena(horas: number): Promise<Peticion[]> {
+  const hasta = Date.now() - horas * 3_600_000
+  return ok(
+    await db()
+      .from('peticiones')
+      .select('*')
+      .eq('estado', 'confirmada')
+      .eq('resena_pedida', false)
+      .lt('inicio', new Date(hasta).toISOString())
+      .gt('inicio', new Date(hasta - 24 * 3_600_000).toISOString()),
+  ) as Peticion[]
+}
+
+export async function marcar(id: number, campo: 'recordada' | 'cliente_avisado' | 'resena_pedida') {
   ok(await db().from('peticiones').update({ [campo]: true }).eq('id', id))
 }

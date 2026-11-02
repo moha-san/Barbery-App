@@ -1,5 +1,5 @@
 import { barberia } from '../config/barberia.ts'
-import { cambiarEstado, guardarMensaje, marcar, pendientesSin, ponerEspera, sacarEspera, verPeticion, type Peticion } from './db.ts'
+import { cambiarEstado, citasParaResena, guardarMensaje, marcar, pendientesSin, ponerEspera, sacarEspera, verPeticion, type Peticion } from './db.ts'
 import { leerBoton, soloNumeros, type Entrante } from './entrada.ts'
 import { cuando } from './fechas.ts'
 import { enviarAviso, enviarConBotones, enviarTexto } from './whatsapp.ts'
@@ -50,6 +50,12 @@ export async function avisarPeticion(p: Peticion, recordatorio = false): Promise
 
 export async function avisarCancelacion(p: Peticion): Promise<void> {
   await enviarAviso(telefonoDe(p), `❌ Cita cancelada por el cliente. Bórrala de Booksy: ${resumen(p)}`, PLANTILLA_CLIENTE)
+}
+
+// El cliente quiere algo que no es una cita normal (domicilio, evento…) o algo que el bot no sabe: se lo pasamos al dueño.
+export async function avisarDueno(telefono: string, nombre: string, motivo: string): Promise<void> {
+  const texto = `📣 Un cliente quiere hablar con vosotros\n${nombre} (+${telefono}): ${motivo}\n\nEscríbele: https://wa.me/${telefono}`
+  await enviarAviso(soloNumeros(barberia.whatsappDueno), texto, PLANTILLA_CLIENTE)
 }
 
 // Mensaje al cliente que también queda en su conversación con el bot.
@@ -125,9 +131,10 @@ export async function atenderEquipo(m: Entrante): Promise<void> {
 }
 
 // Lo llama el planificador cada 5 min: recuerda al barbero las citas sin contestar y, si tarda mucho, avisa al cliente.
-export async function revisarPendientes(): Promise<{ recordadas: number; clientes: number }> {
+export async function revisarPendientes(): Promise<{ recordadas: number; clientes: number; resenas: number }> {
   let recordadas = 0
   let clientes = 0
+  let resenas = 0
   for (const p of await pendientesSin('recordada', barberia.minutosRecordatorio)) {
     await marcar(p.id, 'recordada') // primero se marca: si el envío falla, no se repite en bucle
     await avisarPeticion(p, true).then(() => recordadas++, (e) => console.error('[recordatorio]', p.id, e))
@@ -140,5 +147,15 @@ export async function revisarPendientes(): Promise<{ recordadas: number; cliente
       (e) => console.error('[aviso cliente]', p.id, e),
     )
   }
-  return { recordadas, clientes }
+  // Unas horas después de la cita, se pide la reseña de Google (solo si hay enlace).
+  if (barberia.resenaGoogle) {
+    for (const p of await citasParaResena(barberia.horasResena)) {
+      await marcar(p.id, 'resena_pedida')
+      await decirAlCliente(
+        p.cliente_telefono,
+        `¡Gracias por venir, ${p.cliente_nombre}! Si te ha gustado, nos ayudas mucho con una reseña en Google (1 minuto): ${barberia.resenaGoogle}`,
+      ).then(() => resenas++, (e) => console.error('[reseña]', p.id, e))
+    }
+  }
+  return { recordadas, clientes, resenas }
 }

@@ -30,11 +30,13 @@ create table if not exists public.peticiones (
     check (estado in ('pendiente', 'confirmada', 'otra_hora', 'rechazada', 'cancelada')),
   recordada boolean not null default false, -- ya se le recordó al barbero
   cliente_avisado boolean not null default false, -- ya se le dijo al cliente que sigue pendiente
+  resena_pedida boolean not null default false, -- ya se le pidió la reseña de Google
   created_at timestamptz not null default now()
 );
 alter table public.peticiones add column if not exists local text not null default '';
 alter table public.peticiones add column if not exists recordada boolean not null default false;
 alter table public.peticiones add column if not exists cliente_avisado boolean not null default false;
+alter table public.peticiones add column if not exists resena_pedida boolean not null default false;
 create index if not exists peticiones_cliente_idx on public.peticiones (cliente_telefono, created_at desc);
 
 -- Lo que espera el bot de cada barbero (p. ej. que escriba la otra hora que propone).

@@ -23,6 +23,7 @@ mock.module(aqui('../config/barberia.ts'), {
     barberia: {
       ...barberia,
       whatsappDueno: DUENO,
+      resenaGoogle: 'https://g.page/r/dradeb-prueba/review',
       locales: barberia.locales.map((l: { nombre: string }, i: number) =>
         i === 0 ? { ...l, barberos: [{ nombre: 'Josiko', whatsapp: '' }, { nombre: 'Adrián', whatsapp: ADRIAN }] } : l,
       ),
@@ -49,6 +50,8 @@ mock.module(aqui('../lib/db.ts'), {
       tablas.peticiones.filter((p) => p.cliente_telefono === tel && ['pendiente', 'confirmada'].includes(p.estado as string) && Date.parse(p.inicio as string) > Date.now()),
     pendientesSin: async (campo: string, min: number) =>
       tablas.peticiones.filter((p) => p.estado === 'pendiente' && !p[campo] && Date.parse(p.created_at as string) < Date.now() - min * 60_000),
+    citasParaResena: async (h: number) =>
+      tablas.peticiones.filter((p) => p.estado === 'confirmada' && !p.resena_pedida && Date.parse(p.inicio as string) < Date.now() - h * 3_600_000),
     marcar: async (id: number, campo: string) => void (tablas.peticiones.find((p) => p.id === id)![campo] = true),
     ponerEspera: async (tel: string, id: number) => void tablas.esperas.set(tel, id),
     sacarEspera: async (tel: string) => {
@@ -90,6 +93,7 @@ function iaFalsa(body: { messages: { role: string; content: unknown }[] }) {
   if (/cuánto|precio/i.test(textoUsuario)) return texto('El corte + barba completa son 15 €. ¿Quieres cita?')
   if (/viernes/i.test(textoUsuario)) return herramienta('pedir_cita', { nombre: 'Juan', local: 'Centro', servicio: 'Corte + barba completa', barbero: 'Adrián', fecha: viernes, hora: '20:00' })
   if (/vale/i.test(textoUsuario)) return herramienta('pedir_cita', { nombre: 'Juan', local: 'Centro', servicio: 'Corte + barba completa', barbero: 'Adrián', fecha: viernes, hora: '20:30' })
+  if (/domicilio/i.test(textoUsuario)) return herramienta('avisar_al_dueno', { nombre: 'Juan', motivo: 'Corte a domicilio el sábado para 3 personas en La Manga' })
   if (/cancela/i.test(textoUsuario)) return herramienta('ver_mis_citas', {})
   return texto('¿En qué te ayudo?')
 }
@@ -135,7 +139,7 @@ async function llega(de: string, texto: string, boton?: string) {
   const quien = de === CLIENTE ? 'CLIENTE' : de === ADRIAN ? 'ADRIÁN' : de
   console.log(`\n▶ ${quien}: ${boton ? `[pulsa ${boton}]` : texto}`)
   for (const e of enviados.slice(antes)) {
-    const a = e.to === CLIENTE ? 'cliente' : e.to === ADRIAN ? 'Adrián' : e.to
+    const a = e.to === CLIENTE ? 'cliente' : e.to === ADRIAN ? 'Adrián' : e.to === DUENO ? 'dueño' : e.to
     console.log(`  ◀ bot → ${a}${e.tipo === 'template' ? ' (plantilla)' : ''}: ${e.texto}${e.botones.length ? `  [botones: ${e.botones.join(', ')}]` : ''}`)
   }
   return enviados.slice(antes)
@@ -171,10 +175,10 @@ r = await llega(CLIENTE, 'Quiero cita el viernes a las 8 con Adrián')
 const p3 = tablas.peticiones[2]
 p3.created_at = new Date(Date.now() - 31 * 60_000).toISOString()
 let antesR = enviados.length
-assert.deepEqual(await revisarPendientes(), { recordadas: 1, clientes: 1 })
+assert.deepEqual(await revisarPendientes(), { recordadas: 1, clientes: 1, resenas: 0 })
 console.log('\n▶ [pasan 30 minutos sin que Adrián conteste]')
 for (const e of enviados.slice(antesR)) console.log(`  ◀ bot → ${e.to === CLIENTE ? 'cliente' : 'Adrián'}: ${e.texto.split('\n')[0]}`)
-assert.deepEqual(await revisarPendientes(), { recordadas: 0, clientes: 0 }, 'cada aviso solo una vez')
+assert.deepEqual(await revisarPendientes(), { recordadas: 0, clientes: 0, resenas: 0 }, 'cada aviso solo una vez')
 // "Otra hora" con el botón de 30 min más tarde.
 r = await llega(ADRIAN, '', 'otra:3')
 r = await llega(ADRIAN, '', 'mas30:3')
@@ -183,6 +187,18 @@ assert.match(ultimoA(r, CLIENTE)!.texto, /te propone: viernes \d+ de \w+ a las 2
 r = await llega(CLIENTE, 'Cancela mi cita, porfa')
 assert.match(ultimoA(r, ADRIAN)!.texto, /cancelada/)
 assert.equal(tablas.peticiones[1].estado, 'cancelada')
+
+// Encargo especial (domicilio): se le pasa al dueño.
+r = await llega(CLIENTE, '¿Hacéis cortes a domicilio? Somos 3 el sábado en La Manga')
+assert.match(ultimoA(r, DUENO)!.texto, /domicilio.*\n\nEscríbele: https:\/\/wa.me\/34611000111/s)
+
+// Reseña de Google unas horas después de una cita confirmada (una sola vez).
+tablas.peticiones.push({ id: 99, cliente_telefono: CLIENTE, cliente_nombre: 'Juan', local: 'Centro', servicio: 'Corte clásico con perfilado básico', barbero: 'Adrián', inicio: new Date(Date.now() - 3 * 3_600_000).toISOString(), estado: 'confirmada', resena_pedida: false })
+antesR = enviados.length
+assert.equal((await revisarPendientes()).resenas, 1)
+assert.match(enviados.slice(antesR).find((e) => e.to === CLIENTE)!.texto, /reseña en Google.*g\.page/)
+console.log(`\n▶ [3 horas después de la cita]\n  ◀ bot → cliente: ${enviados.at(-1)!.texto}`)
+assert.equal((await revisarPendientes()).resenas, 0, 'la reseña se pide una vez')
 
 // El mismo mensaje dos veces (WhatsApp a veces lo repite): solo se contesta una.
 const cuerpo = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ id: 'w1', from: CLIENTE, type: 'text', text: { body: 'hola' } }] } }] }] })
@@ -199,4 +215,4 @@ assert.ok(peticionesIA.every((p) => p.fallbacks === 'default' && p.betas?.includ
 assert.match(peticionesIA[0].system, /Barbería Dradeb/)
 assert.match(peticionesIA[0].system, /San Ginés/)
 
-console.log('\n✅ Simulación correcta: dudas, cita, otra hora, confirmación, cancelación, repetidos y firma.')
+console.log('\n✅ Simulación correcta: dudas, cita, otra hora, confirmación, cancelación, encargo al dueño, reseña, repetidos y firma.')
