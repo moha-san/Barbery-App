@@ -131,6 +131,45 @@ export async function marcarRecuperado(telefono: string) {
   ok(await db().from('recuperados').upsert({ telefono, enviado_at: new Date().toISOString() }))
 }
 
+// ── Panel del dueño ──
+
+export type Mensaje = { telefono: string; rol: 'cliente' | 'bot'; texto: string; created_at: string }
+
+// Última conversación de cada cliente (las más recientes primero).
+export async function conversaciones(limite = 40): Promise<Mensaje[]> {
+  const data = ok(
+    await db().from('mensajes').select('telefono, rol, texto, created_at').order('created_at', { ascending: false }).limit(1000),
+  ) as Mensaje[]
+  const vistos = new Set<string>()
+  return data.filter((m) => !vistos.has(m.telefono) && vistos.add(m.telefono)).slice(0, limite)
+}
+
+export async function mensajesDe(telefono: string, limite = 200): Promise<Mensaje[]> {
+  const data = ok(
+    await db().from('mensajes').select('telefono, rol, texto, created_at').eq('telefono', telefono).order('created_at', { ascending: false }).limit(limite),
+  ) as Mensaje[]
+  return data.reverse()
+}
+
+export async function peticionesDesde(desde: Date): Promise<Peticion[]> {
+  return ok(await db().from('peticiones').select('*').gte('created_at', desde.toISOString()).order('created_at', { ascending: false })) as Peticion[]
+}
+
+// El dueño contesta él: el bot se calla con ese cliente hasta `hasta`.
+export async function pausar(telefono: string, minutos: number) {
+  const hasta = new Date(Date.now() + minutos * 60_000).toISOString()
+  ok(await db().from('pausas').upsert({ telefono, hasta }))
+}
+
+export async function quitarPausa(telefono: string) {
+  ok(await db().from('pausas').delete().eq('telefono', telefono))
+}
+
+export async function pausadoHasta(telefono: string): Promise<Date | null> {
+  const data = ok(await db().from('pausas').select('hasta').eq('telefono', telefono).gt('hasta', new Date().toISOString())) as { hasta: string }[]
+  return data[0] ? new Date(data[0].hasta) : null
+}
+
 export async function marcar(id: number, campo: 'recordada' | 'cliente_avisado' | 'resena_pedida') {
   ok(await db().from('peticiones').update({ [campo]: true }).eq('id', id))
 }

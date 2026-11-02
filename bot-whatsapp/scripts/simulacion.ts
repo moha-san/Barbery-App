@@ -34,7 +34,7 @@ mock.module(aqui('../config/barberia.ts'), {
 
 // ── Base de datos en memoria ──
 type Fila = Record<string, unknown> & { id: number }
-const tablas = { mensajes: [] as { telefono: string; rol: string; texto: string }[], recibidos: new Set<string>(), peticiones: [] as Fila[], esperas: new Map<string, number>(), recuperados: new Set<string>() }
+const tablas = { mensajes: [] as { telefono: string; rol: string; texto: string }[], recibidos: new Set<string>(), peticiones: [] as Fila[], esperas: new Map<string, number>(), recuperados: new Set<string>(), pausas: new Map<string, number>() }
 mock.module(aqui('../lib/db.ts'), {
   namedExports: {
     marcarRecibido: async (id: string) => (tablas.recibidos.has(id) ? false : (tablas.recibidos.add(id), true)),
@@ -58,6 +58,7 @@ mock.module(aqui('../lib/db.ts'), {
       return viejas.filter((p) => !tablas.recuperados.has(p.cliente_telefono as string))
     },
     marcarRecuperado: async (tel: string) => void tablas.recuperados.add(tel),
+    pausadoHasta: async (tel: string) => ((tablas.pausas.get(tel) ?? 0) > Date.now() ? new Date(tablas.pausas.get(tel)!) : null),
     marcar: async (id: number, campo: string) => void (tablas.peticiones.find((p) => p.id === id)![campo] = true),
     ponerEspera: async (tel: string, id: number) => void tablas.esperas.set(tel, id),
     sacarEspera: async (tel: string) => {
@@ -218,6 +219,13 @@ if (enHorario) {
   assert.equal((await revisarPendientes()).vuelven, 0, 'solo una vez')
 } else console.log('\n▶ [fuera de 11-20 h: el mensaje para que vuelvan no se manda ahora]')
 
+// El dueño habla con el cliente desde el panel: el bot se calla y le reenvía lo que escribe el cliente.
+tablas.pausas.set(CLIENTE, Date.now() + 3_600_000)
+r = await llega(CLIENTE, '¿Entonces a qué hora venís?')
+assert.equal(ultimoA(r, CLIENTE), undefined, 'el bot no contesta')
+assert.match(ultimoA(r, DUENO)!.texto, /a qué hora venís/)
+tablas.pausas.clear()
+
 // El mismo mensaje dos veces (WhatsApp a veces lo repite): solo se contesta una.
 const cuerpo = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ id: 'w1', from: CLIENTE, type: 'text', text: { body: 'hola' } }] } }] }] })
 const antes = enviados.length
@@ -233,4 +241,4 @@ assert.ok(peticionesIA.every((p) => p.fallbacks === 'default' && p.betas?.includ
 assert.match(peticionesIA[0].system, /Barbería Dradeb/)
 assert.match(peticionesIA[0].system, /San Ginés/)
 
-console.log('\n✅ Simulación correcta: dudas, cita, otra hora, confirmación, cancelación, encargo al dueño, reseña, clientes que vuelven, repetidos y firma.')
+console.log('\n✅ Simulación correcta: dudas, cita, otra hora, confirmación, cancelación, encargo al dueño, el dueño contesta, reseña, clientes que vuelven, repetidos y firma.')

@@ -1,7 +1,7 @@
 import { waitUntil } from '@vercel/functions'
 import { responder } from '../../../lib/agente.ts'
-import { atenderEquipo, esDelEquipo } from '../../../lib/barbero.ts'
-import { guardarMensaje, marcarRecibido } from '../../../lib/db.ts'
+import { atenderEquipo, esDelEquipo, reenviarAlDueno } from '../../../lib/barbero.ts'
+import { guardarMensaje, marcarRecibido, pausadoHasta } from '../../../lib/db.ts'
 import { leerWebhook, type Entrante } from '../../../lib/entrada.ts'
 import { enviarTexto, firmaValida } from '../../../lib/whatsapp.ts'
 
@@ -23,6 +23,8 @@ async function atender(m: Entrante) {
     // Si un cliente pulsa un botón viejo, lo tratamos como texto.
     const texto = m.texto || m.boton || ''
     await guardarMensaje(m.de, 'cliente', texto)
+    // El dueño está hablando con este cliente desde el panel: el bot no contesta, solo le pasa el mensaje.
+    if (await pausadoHasta(m.de)) return await reenviarAlDueno(m.de, m.nombre, texto)
     const respuesta = await responder(m.de, m.nombre)
     await enviarTexto(m.de, respuesta)
     await guardarMensaje(m.de, 'bot', respuesta)

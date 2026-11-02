@@ -59,6 +59,12 @@ export async function avisarDueno(telefono: string, nombre: string, motivo: stri
   await enviarAviso(soloNumeros(barberia.whatsappDueno), texto, PLANTILLA_CLIENTE)
 }
 
+// Mientras el dueño contesta desde el panel, los mensajes del cliente le llegan también a su WhatsApp.
+export async function reenviarAlDueno(telefono: string, nombre: string, texto: string): Promise<void> {
+  if (!barberia.whatsappDueno) return
+  await enviarAviso(soloNumeros(barberia.whatsappDueno), `💬 ${nombre || 'Cliente'} (+${telefono}): ${texto}\n\nContesta desde el panel.`, PLANTILLA_CLIENTE)
+}
+
 // Mensaje al cliente que también queda en su conversación con el bot.
 async function decirAlCliente(telefono: string, texto: string) {
   await enviarAviso(telefono, texto, PLANTILLA_CLIENTE)
