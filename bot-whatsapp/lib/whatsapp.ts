@@ -47,9 +47,9 @@ function enviarPlantilla(to: string, nombre: string, texto: string, botones: Bot
   })
 }
 
-// Mensaje con botones (hasta 3). Si la persona no ha escrito en 24 h, se manda la plantilla.
+// Mensaje con botones (hasta 3). Si la persona no ha escrito en 24 h, se manda la plantilla (si se da una).
 // textoPlantilla: lo que va en el hueco {{1}} de la plantilla (por defecto, el mismo texto).
-export async function enviarConBotones(to: string, texto: string, botones: Boton[], plantilla: string, textoPlantilla = texto): Promise<void> {
+export async function enviarConBotones(to: string, texto: string, botones: Boton[], plantilla?: string, textoPlantilla = texto): Promise<void> {
   try {
     await enviar({
       to,
@@ -61,7 +61,7 @@ export async function enviarConBotones(to: string, texto: string, botones: Boton
       },
     })
   } catch (e) {
-    if (e instanceof ErrorWhatsApp && e.codigo === FUERA_DE_VENTANA) return enviarPlantilla(to, plantilla, textoPlantilla, botones)
+    if (plantilla && e instanceof ErrorWhatsApp && e.codigo === FUERA_DE_VENTANA) return enviarPlantilla(to, plantilla, textoPlantilla, botones)
     throw e
   }
 }

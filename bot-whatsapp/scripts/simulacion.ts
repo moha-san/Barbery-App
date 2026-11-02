@@ -23,10 +23,9 @@ mock.module(aqui('../config/barberia.ts'), {
     barberia: {
       ...barberia,
       whatsappDueno: DUENO,
-      barberos: [
-        { nombre: 'Josiko', whatsapp: '' },
-        { nombre: 'Adrián', whatsapp: ADRIAN },
-      ],
+      locales: barberia.locales.map((l: { nombre: string }, i: number) =>
+        i === 0 ? { ...l, barberos: [{ nombre: 'Josiko', whatsapp: '' }, { nombre: 'Adrián', whatsapp: ADRIAN }] } : l,
+      ),
     },
   },
 })
@@ -40,7 +39,7 @@ mock.module(aqui('../lib/db.ts'), {
     guardarMensaje: async (telefono: string, rol: string, texto: string) => void tablas.mensajes.push({ telefono, rol, texto }),
     historial: async (telefono: string) => tablas.mensajes.filter((m) => m.telefono === telefono).slice(-20).map(({ rol, texto }) => ({ rol, texto })),
     crearPeticion: async (p: Record<string, unknown>) => {
-      const fila = { ...p, id: tablas.peticiones.length + 1, estado: 'pendiente' }
+      const fila = { ...p, id: tablas.peticiones.length + 1, estado: 'pendiente', recordada: false, cliente_avisado: false, created_at: new Date().toISOString() }
       tablas.peticiones.push(fila)
       return fila
     },
@@ -48,6 +47,9 @@ mock.module(aqui('../lib/db.ts'), {
     cambiarEstado: async (id: number, estado: string) => void Object.assign(tablas.peticiones.find((p) => p.id === id)!, { estado }),
     citasFuturas: async (tel: string) =>
       tablas.peticiones.filter((p) => p.cliente_telefono === tel && ['pendiente', 'confirmada'].includes(p.estado as string) && Date.parse(p.inicio as string) > Date.now()),
+    pendientesSin: async (campo: string, min: number) =>
+      tablas.peticiones.filter((p) => p.estado === 'pendiente' && !p[campo] && Date.parse(p.created_at as string) < Date.now() - min * 60_000),
+    marcar: async (id: number, campo: string) => void (tablas.peticiones.find((p) => p.id === id)![campo] = true),
     ponerEspera: async (tel: string, id: number) => void tablas.esperas.set(tel, id),
     sacarEspera: async (tel: string) => {
       const id = tablas.esperas.get(tel) ?? null
@@ -85,9 +87,9 @@ function iaFalsa(body: { messages: { role: string; content: unknown }[] }) {
     if (r.startsWith('id ')) return herramienta('cancelar_cita', { id: Number(/^id (\d+)/.exec(r)![1]) })
     return texto(`Hecho 👍 (${r.split('.')[0]}). Te aviso por aquí.`)
   }
-  if (/cuánto|precio/i.test(textoUsuario)) return texto('El corte y barba son 20 €. ¿Quieres cita?')
-  if (/viernes/i.test(textoUsuario)) return herramienta('pedir_cita', { nombre: 'Juan', servicio: 'Corte y barba', barbero: 'Adrián', fecha: viernes, hora: '20:00' })
-  if (/vale/i.test(textoUsuario)) return herramienta('pedir_cita', { nombre: 'Juan', servicio: 'Corte y barba', barbero: 'Adrián', fecha: viernes, hora: '20:30' })
+  if (/cuánto|precio/i.test(textoUsuario)) return texto('El corte + barba completa son 15 €. ¿Quieres cita?')
+  if (/viernes/i.test(textoUsuario)) return herramienta('pedir_cita', { nombre: 'Juan', local: 'Centro', servicio: 'Corte + barba completa', barbero: 'Adrián', fecha: viernes, hora: '20:00' })
+  if (/vale/i.test(textoUsuario)) return herramienta('pedir_cita', { nombre: 'Juan', local: 'Centro', servicio: 'Corte + barba completa', barbero: 'Adrián', fecha: viernes, hora: '20:30' })
   if (/cancela/i.test(textoUsuario)) return herramienta('ver_mis_citas', {})
   return texto('¿En qué te ayudo?')
 }
@@ -142,7 +144,7 @@ async function llega(de: string, texto: string, boton?: string) {
 const ultimoA = (lista: Enviado[], to: string) => lista.filter((e) => e.to === to).at(-1)
 
 let r = await llega(CLIENTE, '¿Cuánto cuesta corte y barba?')
-assert.match(ultimoA(r, CLIENTE)!.texto, /20 €/)
+assert.match(ultimoA(r, CLIENTE)!.texto, /15 €/)
 
 r = await llega(CLIENTE, 'Quiero cita el viernes a las 8 con Adrián')
 assert.equal(ultimoA(r, ADRIAN)?.tipo, 'template', 'barbero fuera de las 24 h: plantilla')
@@ -150,7 +152,9 @@ assert.deepEqual(ultimoA(r, ADRIAN)?.botones, ['hecho:1', 'otra:1', 'no:1'])
 assert.match(ultimoA(r, CLIENTE)!.texto, /Te aviso/)
 
 r = await llega(ADRIAN, '', 'otra:1')
-assert.match(ultimoA(r, ADRIAN)!.texto, /Qué hora/)
+assert.deepEqual(ultimoA(r, ADRIAN)?.botones, ['mas30:1', 'mas60:1', 'escribir:1'])
+r = await llega(ADRIAN, '', 'escribir:1')
+assert.match(ultimoA(r, ADRIAN)!.texto, /Escribe la hora/)
 r = await llega(ADRIAN, '20:30')
 assert.match(ultimoA(r, CLIENTE)!.texto, /te propone: 20:30/)
 
@@ -160,6 +164,21 @@ r = await llega(ADRIAN, '', 'hecho:2')
 assert.match(ultimoA(r, CLIENTE)!.texto, /Cita confirmada/)
 r = await llega(ADRIAN, '', 'hecho:2')
 assert.match(ultimoA(r, ADRIAN)!.texto, /ya estaba contestada/)
+
+// Cita sin contestar: recordatorio al barbero a los 10 min y aviso al cliente a los 30.
+const { revisarPendientes } = await import(aqui('../lib/barbero.ts'))
+r = await llega(CLIENTE, 'Quiero cita el viernes a las 8 con Adrián')
+const p3 = tablas.peticiones[2]
+p3.created_at = new Date(Date.now() - 31 * 60_000).toISOString()
+let antesR = enviados.length
+assert.deepEqual(await revisarPendientes(), { recordadas: 1, clientes: 1 })
+console.log('\n▶ [pasan 30 minutos sin que Adrián conteste]')
+for (const e of enviados.slice(antesR)) console.log(`  ◀ bot → ${e.to === CLIENTE ? 'cliente' : 'Adrián'}: ${e.texto.split('\n')[0]}`)
+assert.deepEqual(await revisarPendientes(), { recordadas: 0, clientes: 0 }, 'cada aviso solo una vez')
+// "Otra hora" con el botón de 30 min más tarde.
+r = await llega(ADRIAN, '', 'otra:3')
+r = await llega(ADRIAN, '', 'mas30:3')
+assert.match(ultimoA(r, CLIENTE)!.texto, /te propone: viernes \d+ de \w+ a las 20:30/)
 
 r = await llega(CLIENTE, 'Cancela mi cita, porfa')
 assert.match(ultimoA(r, ADRIAN)!.texto, /cancelada/)
@@ -177,6 +196,7 @@ assert.equal((await POST(new Request('http://x', { method: 'POST', body: cuerpo,
 
 // Cómo se llamó a la IA.
 assert.ok(peticionesIA.every((p) => p.fallbacks === 'default' && p.betas?.includes('server-side-fallback-2026-07-01')))
-assert.match(peticionesIA[0].system, /JK The Barber/)
+assert.match(peticionesIA[0].system, /Barbería Dradeb/)
+assert.match(peticionesIA[0].system, /San Ginés/)
 
 console.log('\n✅ Simulación correcta: dudas, cita, otra hora, confirmación, cancelación, repetidos y firma.')

@@ -22,13 +22,19 @@ create table if not exists public.peticiones (
   id bigint generated always as identity primary key,
   cliente_telefono text not null,
   cliente_nombre text not null,
+  local text not null default '',
   servicio text not null,
   barbero text not null,
   inicio timestamptz not null,
   estado text not null default 'pendiente'
     check (estado in ('pendiente', 'confirmada', 'otra_hora', 'rechazada', 'cancelada')),
+  recordada boolean not null default false, -- ya se le recordó al barbero
+  cliente_avisado boolean not null default false, -- ya se le dijo al cliente que sigue pendiente
   created_at timestamptz not null default now()
 );
+alter table public.peticiones add column if not exists local text not null default '';
+alter table public.peticiones add column if not exists recordada boolean not null default false;
+alter table public.peticiones add column if not exists cliente_avisado boolean not null default false;
 create index if not exists peticiones_cliente_idx on public.peticiones (cliente_telefono, created_at desc);
 
 -- Lo que espera el bot de cada barbero (p. ej. que escriba la otra hora que propone).
@@ -43,3 +49,17 @@ alter table public.mensajes enable row level security;
 alter table public.recibidos enable row level security;
 alter table public.peticiones enable row level security;
 alter table public.esperas enable row level security;
+
+-- Recordatorios de citas sin contestar: llama al bot cada 5 minutos.
+-- Cambia la dirección y la contraseña (CRON_SECRET de Vercel) antes de ejecutarlo.
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+select cron.unschedule('bot-recordatorios') where exists (select 1 from cron.job where jobname = 'bot-recordatorios');
+select cron.schedule(
+  'bot-recordatorios',
+  '*/5 * * * *',
+  $$ select net.http_get(
+       url := 'https://TU-BOT.vercel.app/api/recordatorios',
+       headers := jsonb_build_object('Authorization', 'Bearer TU_CRON_SECRET')
+     ) $$
+);
