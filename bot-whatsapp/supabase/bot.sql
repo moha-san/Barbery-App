@@ -46,11 +46,18 @@ create table if not exists public.esperas (
   created_at timestamptz not null default now()
 );
 
+-- Clientes a los que ya se escribió para que vuelvan (para no repetir).
+create table if not exists public.recuperados (
+  telefono text primary key,
+  enviado_at timestamptz not null default now()
+);
+
 -- Nadie entra desde fuera: RLS activado y sin políticas (el servidor usa service_role).
 alter table public.mensajes enable row level security;
 alter table public.recibidos enable row level security;
 alter table public.peticiones enable row level security;
 alter table public.esperas enable row level security;
+alter table public.recuperados enable row level security;
 
 -- Recordatorios de citas sin contestar: llama al bot cada 5 minutos.
 -- Cambia la dirección y la contraseña (CRON_SECRET de Vercel) antes de ejecutarlo.

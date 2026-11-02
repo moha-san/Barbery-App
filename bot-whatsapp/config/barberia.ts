@@ -90,6 +90,9 @@ export const barberia = {
   // Si está puesto, el bot lo pide al cliente unas horas después de su cita. Vacío = no se pide.
   resenaGoogle: '',
   horasResena: 2,
+  // Semanas sin venir tras las que el bot escribe al cliente para que vuelva ("¿te busco hueco?"). 0 = apagado.
+  // Necesita la plantilla de marketing "volver_cita" aprobada en Meta (cada envío cuesta unos céntimos).
+  semanasVolver: 0,
   // Cualquier otra cosa que el bot deba saber (pago con tarjeta, aparcamiento, etc.).
   otrosDatos:
     'Email: hola@dradebbarber.com. Instagram: @barberiadradeb. ' +

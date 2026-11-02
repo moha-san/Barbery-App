@@ -23,6 +23,7 @@ mock.module(aqui('../config/barberia.ts'), {
     barberia: {
       ...barberia,
       whatsappDueno: DUENO,
+      semanasVolver: 5,
       resenaGoogle: 'https://g.page/r/dradeb-prueba/review',
       locales: barberia.locales.map((l: { nombre: string }, i: number) =>
         i === 0 ? { ...l, barberos: [{ nombre: 'Josiko', whatsapp: '' }, { nombre: 'Adrián', whatsapp: ADRIAN }] } : l,
@@ -33,7 +34,7 @@ mock.module(aqui('../config/barberia.ts'), {
 
 // ── Base de datos en memoria ──
 type Fila = Record<string, unknown> & { id: number }
-const tablas = { mensajes: [] as { telefono: string; rol: string; texto: string }[], recibidos: new Set<string>(), peticiones: [] as Fila[], esperas: new Map<string, number>() }
+const tablas = { mensajes: [] as { telefono: string; rol: string; texto: string }[], recibidos: new Set<string>(), peticiones: [] as Fila[], esperas: new Map<string, number>(), recuperados: new Set<string>() }
 mock.module(aqui('../lib/db.ts'), {
   namedExports: {
     marcarRecibido: async (id: string) => (tablas.recibidos.has(id) ? false : (tablas.recibidos.add(id), true)),
@@ -52,6 +53,11 @@ mock.module(aqui('../lib/db.ts'), {
       tablas.peticiones.filter((p) => p.estado === 'pendiente' && !p[campo] && Date.parse(p.created_at as string) < Date.now() - min * 60_000),
     citasParaResena: async (h: number) =>
       tablas.peticiones.filter((p) => p.estado === 'confirmada' && !p.resena_pedida && Date.parse(p.inicio as string) < Date.now() - h * 3_600_000),
+    clientesParaVolver: async (sem: number) => {
+      const viejas = tablas.peticiones.filter((p) => p.estado === 'confirmada' && Date.parse(p.inicio as string) < Date.now() - sem * 7 * 86_400_000)
+      return viejas.filter((p) => !tablas.recuperados.has(p.cliente_telefono as string))
+    },
+    marcarRecuperado: async (tel: string) => void tablas.recuperados.add(tel),
     marcar: async (id: number, campo: string) => void (tablas.peticiones.find((p) => p.id === id)![campo] = true),
     ponerEspera: async (tel: string, id: number) => void tablas.esperas.set(tel, id),
     sacarEspera: async (tel: string) => {
@@ -175,10 +181,10 @@ r = await llega(CLIENTE, 'Quiero cita el viernes a las 8 con Adrián')
 const p3 = tablas.peticiones[2]
 p3.created_at = new Date(Date.now() - 31 * 60_000).toISOString()
 let antesR = enviados.length
-assert.deepEqual(await revisarPendientes(), { recordadas: 1, clientes: 1, resenas: 0 })
+assert.deepEqual(await revisarPendientes(), { recordadas: 1, clientes: 1, resenas: 0, vuelven: 0 })
 console.log('\n▶ [pasan 30 minutos sin que Adrián conteste]')
 for (const e of enviados.slice(antesR)) console.log(`  ◀ bot → ${e.to === CLIENTE ? 'cliente' : 'Adrián'}: ${e.texto.split('\n')[0]}`)
-assert.deepEqual(await revisarPendientes(), { recordadas: 0, clientes: 0, resenas: 0 }, 'cada aviso solo una vez')
+assert.deepEqual(await revisarPendientes(), { recordadas: 0, clientes: 0, resenas: 0, vuelven: 0 }, 'cada aviso solo una vez')
 // "Otra hora" con el botón de 30 min más tarde.
 r = await llega(ADRIAN, '', 'otra:3')
 r = await llega(ADRIAN, '', 'mas30:3')
@@ -200,6 +206,18 @@ assert.match(enviados.slice(antesR).find((e) => e.to === CLIENTE)!.texto, /rese�
 console.log(`\n▶ [3 horas después de la cita]\n  ◀ bot → cliente: ${enviados.at(-1)!.texto}`)
 assert.equal((await revisarPendientes()).resenas, 0, 'la reseña se pide una vez')
 
+// Cliente que lleva 5 semanas sin venir: el bot le escribe (solo de 11 a 20 h, hora de la barbería).
+const horaMadrid = Number(new Intl.DateTimeFormat('es-ES', { hour: 'numeric', hourCycle: 'h23', timeZone: 'Europe/Madrid' }).format(new Date()))
+const enHorario = horaMadrid >= 11 && horaMadrid < 20
+tablas.peticiones.push({ id: 100, cliente_telefono: '34655000444', cliente_nombre: 'Luis', local: 'Centro', servicio: 'Degradado / skin fade', barbero: 'Jared', inicio: new Date(Date.now() - 36 * 86_400_000).toISOString(), estado: 'confirmada', resena_pedida: true })
+antesR = enviados.length
+assert.equal((await revisarPendientes()).vuelven, enHorario ? 1 : 0)
+if (enHorario) {
+  assert.match(enviados.at(-1)!.texto, /Luis.*Jared/)
+  console.log(`\n▶ [Luis lleva 5 semanas sin venir]\n  ◀ bot → Luis: ${enviados.at(-1)!.texto}`)
+  assert.equal((await revisarPendientes()).vuelven, 0, 'solo una vez')
+} else console.log('\n▶ [fuera de 11-20 h: el mensaje para que vuelvan no se manda ahora]')
+
 // El mismo mensaje dos veces (WhatsApp a veces lo repite): solo se contesta una.
 const cuerpo = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ id: 'w1', from: CLIENTE, type: 'text', text: { body: 'hola' } }] } }] }] })
 const antes = enviados.length
@@ -215,4 +233,4 @@ assert.ok(peticionesIA.every((p) => p.fallbacks === 'default' && p.betas?.includ
 assert.match(peticionesIA[0].system, /Barbería Dradeb/)
 assert.match(peticionesIA[0].system, /San Ginés/)
 
-console.log('\n✅ Simulación correcta: dudas, cita, otra hora, confirmación, cancelación, encargo al dueño, reseña, repetidos y firma.')
+console.log('\n✅ Simulación correcta: dudas, cita, otra hora, confirmación, cancelación, encargo al dueño, reseña, clientes que vuelven, repetidos y firma.')

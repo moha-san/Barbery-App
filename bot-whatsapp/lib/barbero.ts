@@ -1,13 +1,14 @@
 import { barberia } from '../config/barberia.ts'
-import { cambiarEstado, citasParaResena, guardarMensaje, marcar, pendientesSin, ponerEspera, sacarEspera, verPeticion, type Peticion } from './db.ts'
+import { cambiarEstado, citasParaResena, clientesParaVolver, marcarRecuperado, guardarMensaje, marcar, pendientesSin, ponerEspera, sacarEspera, verPeticion, type Peticion } from './db.ts'
 import { leerBoton, soloNumeros, type Entrante } from './entrada.ts'
-import { cuando } from './fechas.ts'
+import { cuando, horaLocal } from './fechas.ts'
 import { enviarAviso, enviarConBotones, enviarTexto } from './whatsapp.ts'
 
 // Lo que pasa en el lado del barbero: recibe la petición, la pasa a Booksy y pulsa un botón.
 
 const PLANTILLA_BARBERO = process.env.WHATSAPP_PLANTILLA_BARBERO || 'peticion_cita'
 const PLANTILLA_CLIENTE = process.env.WHATSAPP_PLANTILLA_CLIENTE || 'aviso_cita'
+const PLANTILLA_VOLVER = process.env.WHATSAPP_PLANTILLA_VOLVER || 'volver_cita'
 
 export const CUALQUIERA = 'el primero libre'
 
@@ -131,10 +132,11 @@ export async function atenderEquipo(m: Entrante): Promise<void> {
 }
 
 // Lo llama el planificador cada 5 min: recuerda al barbero las citas sin contestar y, si tarda mucho, avisa al cliente.
-export async function revisarPendientes(): Promise<{ recordadas: number; clientes: number; resenas: number }> {
+export async function revisarPendientes(): Promise<{ recordadas: number; clientes: number; resenas: number; vuelven: number }> {
   let recordadas = 0
   let clientes = 0
   let resenas = 0
+  let vuelven = 0
   for (const p of await pendientesSin('recordada', barberia.minutosRecordatorio)) {
     await marcar(p.id, 'recordada') // primero se marca: si el envío falla, no se repite en bucle
     await avisarPeticion(p, true).then(() => recordadas++, (e) => console.error('[recordatorio]', p.id, e))
@@ -157,5 +159,16 @@ export async function revisarPendientes(): Promise<{ recordadas: number; cliente
       ).then(() => resenas++, (e) => console.error('[reseña]', p.id, e))
     }
   }
-  return { recordadas, clientes, resenas }
+  // Clientes que llevan semanas sin venir: un mensaje para que vuelvan (solo de 11 a 20 h).
+  const hora = horaLocal(barberia.zonaHoraria)
+  if (barberia.semanasVolver > 0 && hora >= 11 && hora < 20) {
+    for (const p of await clientesParaVolver(barberia.semanasVolver)) {
+      await marcarRecuperado(p.cliente_telefono)
+      const texto = `¡Hola, ${p.cliente_nombre}! Ya toca repasar ese corte 💈 ¿Te busco hueco con ${p.barbero === CUALQUIERA ? 'nosotros' : p.barbero} esta semana? Dime día y hora y te lo pido.`
+      await enviarAviso(p.cliente_telefono, texto, PLANTILLA_VOLVER)
+        .then(() => guardarMensaje(p.cliente_telefono, 'bot', texto))
+        .then(() => vuelven++, (e) => console.error('[volver]', p.cliente_telefono, e))
+    }
+  }
+  return { recordadas, clientes, resenas, vuelven }
 }

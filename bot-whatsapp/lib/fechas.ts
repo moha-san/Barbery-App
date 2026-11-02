@@ -15,6 +15,9 @@ export function aInstante(fecha: string, hora: string, zona: string): Date | nul
   return new Date(t.getTime())
 }
 
+// Hora del día (0-23) ahora mismo en la barbería.
+export const horaLocal = (zona: string) => new TZDate(Date.now(), zona).getHours()
+
 // "jueves 6 de noviembre a las 20:00"
 export const cuando = (iso: string | Date, zona: string) =>
   format(new TZDate(new Date(iso).getTime(), zona), "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })

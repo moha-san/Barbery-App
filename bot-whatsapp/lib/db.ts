@@ -108,6 +108,29 @@ export async function citasParaResena(horas: number): Promise<Peticion[]> {
   ) as Peticion[]
 }
 
+// Clientes cuya última cita confirmada fue hace entre `semanas` y `semanas + 1` semanas, sin citas después
+// y a los que no se ha escrito ya para que vuelvan. Devuelve su última cita.
+export async function clientesParaVolver(semanas: number): Promise<Peticion[]> {
+  const semana = 7 * 24 * 3_600_000
+  const desde = new Date(Date.now() - (semanas + 1) * semana).toISOString()
+  const citas = ok(
+    await db().from('peticiones').select('*').in('estado', ['confirmada', 'pendiente']).gt('inicio', desde).order('inicio'),
+  ) as Peticion[]
+  const ultima = new Map<string, Peticion>()
+  for (const c of citas) ultima.set(c.cliente_telefono, c) // ordenadas: queda la última
+  const limite = Date.now() - semanas * semana
+  const candidatos = [...ultima.values()].filter((c) => c.estado === 'confirmada' && Date.parse(c.inicio) < limite)
+  if (!candidatos.length) return []
+  const yaEscritos = ok(
+    await db().from('recuperados').select('telefono, enviado_at').in('telefono', candidatos.map((c) => c.cliente_telefono)),
+  ) as { telefono: string; enviado_at: string }[]
+  return candidatos.filter((c) => !yaEscritos.some((r) => r.telefono === c.cliente_telefono && r.enviado_at > c.inicio))
+}
+
+export async function marcarRecuperado(telefono: string) {
+  ok(await db().from('recuperados').upsert({ telefono, enviado_at: new Date().toISOString() }))
+}
+
 export async function marcar(id: number, campo: 'recordada' | 'cliente_avisado' | 'resena_pedida') {
   ok(await db().from('peticiones').update({ [campo]: true }).eq('id', id))
 }
