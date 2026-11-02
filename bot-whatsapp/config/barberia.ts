@@ -27,9 +27,9 @@ export const barberia = {
   ciudad: 'Cartagena',
   web: 'https://dradeb.es',
   // Teléfono para llamar (se lo damos al cliente si el barbero tarda en contestar).
-  telefono: '',
+  telefono: '672 57 85 81',
   // WhatsApp del dueño: recibe lo que no tenga a nadie más asignado.
-  whatsappDueno: '',
+  whatsappDueno: '34672578581',
   zonaHoraria: 'Europe/Madrid',
   locales: [
     {
@@ -45,7 +45,10 @@ export const barberia = {
         { nombre: 'Combo tú + 1 amigo', precio: '20 €', duracion: '1 h' },
         { nombre: 'Combo tú + 2 amigos', precio: '32 €', duracion: '1 h 30 min' },
       ],
-      barberos: [],
+      barberos: [
+        { nombre: 'Juan José Varela', whatsapp: '' },
+        { nombre: 'Jared', whatsapp: '' },
+      ],
     },
     {
       nombre: 'San Ginés',
@@ -58,7 +61,10 @@ export const barberia = {
         { nombre: 'Corte + barba degradado', precio: '12 €', duracion: '30 min' },
         { nombre: 'Corte + barba + cejas + lavado', precio: '19 €', duracion: 'consultar' },
       ],
-      barberos: [],
+      barberos: [
+        { nombre: 'Oussama', whatsapp: '' },
+        { nombre: 'Jorge Azorín', whatsapp: '' },
+      ],
     },
     {
       nombre: 'Alameda',
@@ -71,14 +77,21 @@ export const barberia = {
         { nombre: 'Degradado / skin fade', precio: '11 €', duracion: '30 min' },
         { nombre: 'Combo tú + 2 amigos', precio: '30 €', duracion: '1 h 30 min' },
       ],
-      barberos: [],
+      barberos: [
+        { nombre: 'Carlos', whatsapp: '' },
+        { nombre: 'Juan Pedro', whatsapp: '' },
+      ],
     },
   ] satisfies Local[] as Local[],
   // Minutos sin contestar antes de recordárselo al barbero y de avisar al cliente.
   minutosRecordatorio: 10,
   minutosAvisoCliente: 30,
   // Cualquier otra cosa que el bot deba saber (pago con tarjeta, aparcamiento, etc.).
-  otrosDatos: '',
+  otrosDatos:
+    'Email: hola@dradebbarber.com. Instagram: @barberiadradeb. ' +
+    'Aimán es el fundador: hace servicios especiales, eventos y cortes a domicilio (con artistas y deportistas). ' +
+    'Para eso no pidas cita con pedir_cita: di que escriban a este WhatsApp contando qué quieren y el dueño les contesta. ' +
+    'Hay dos Juan: Juan José Varela (Centro) y Juan Pedro (Alameda); si dicen solo "Juan", pregunta cuál.',
 }
 
 export type Barberia = typeof barberia
