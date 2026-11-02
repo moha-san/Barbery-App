@@ -10,6 +10,7 @@ export type Peticion = {
   id: number
   cliente_telefono: string
   cliente_nombre: string
+  local: string
   servicio: string
   barbero: string
   inicio: string

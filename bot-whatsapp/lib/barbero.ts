@@ -9,25 +9,34 @@ import { enviarAviso, enviarConBotones, enviarTexto } from './whatsapp.ts'
 const PLANTILLA_BARBERO = process.env.WHATSAPP_PLANTILLA_BARBERO || 'peticion_cita'
 const PLANTILLA_CLIENTE = process.env.WHATSAPP_PLANTILLA_CLIENTE || 'aviso_cita'
 
-// WhatsApp al que van las peticiones de ese barbero ("cualquiera" o sin número → dueño).
-export function telefonoDe(nombreBarbero: string): string {
-  const b = barberia.barberos.find((x) => x.nombre.toLowerCase() === nombreBarbero.toLowerCase())
-  return soloNumeros(b?.whatsapp || barberia.whatsappDueno)
+export const CUALQUIERA = 'el primero libre'
+
+export const localDe = (nombre: string) => barberia.locales.find((l) => l.nombre.toLowerCase() === nombre.toLowerCase())
+
+// WhatsApp al que va la cita: el del barbero; si no tiene (o es "el primero libre"), el del local; si no, el del dueño.
+export function telefonoDe(p: Pick<Peticion, 'local' | 'barbero'>): string {
+  const local = localDe(p.local)
+  const b = local?.barberos.find((x) => x.nombre.toLowerCase() === p.barbero.toLowerCase())
+  return soloNumeros(b?.whatsapp || local?.whatsapp || barberia.whatsappDueno)
 }
 
 export function esDelEquipo(telefono: string): boolean {
-  const equipo = [barberia.whatsappDueno, ...barberia.barberos.map((b) => b.whatsapp)].map(soloNumeros).filter(Boolean)
+  const equipo = [barberia.whatsappDueno, ...barberia.locales.flatMap((l) => [l.whatsapp, ...l.barberos.map((b) => b.whatsapp)])]
+    .map(soloNumeros)
+    .filter(Boolean)
   return equipo.includes(soloNumeros(telefono))
 }
 
-const resumen = (p: Peticion) => `${p.cliente_nombre} (+${p.cliente_telefono}): ${p.servicio} con ${p.barbero}, ${cuando(p.inicio, barberia.zonaHoraria)}`
+const enLocal = (p: Peticion) => (barberia.locales.length > 1 ? ` en ${p.local}` : '')
+const resumen = (p: Peticion) =>
+  `${p.cliente_nombre} (+${p.cliente_telefono}): ${p.servicio} con ${p.barbero}${enLocal(p)}, ${cuando(p.inicio, barberia.zonaHoraria)}`
 
 export async function avisarPeticion(p: Peticion, recordatorio = false): Promise<void> {
   const texto =
     `${recordatorio ? '⏰ Sigue sin contestar' : '📅 Nueva cita para pasar a Booksy'}\n${resumen(p)}\n\n` +
     `Mírala en Booksy y apúntala. Luego pulsa "Hecho" y se lo confirmo al cliente.`
   await enviarConBotones(
-    telefonoDe(p.barbero),
+    telefonoDe(p),
     texto,
     [
       { id: `hecho:${p.id}`, titulo: 'Hecho' },
@@ -40,7 +49,7 @@ export async function avisarPeticion(p: Peticion, recordatorio = false): Promise
 }
 
 export async function avisarCancelacion(p: Peticion): Promise<void> {
-  await enviarAviso(telefonoDe(p.barbero), `❌ Cita cancelada por el cliente. Bórrala de Booksy: ${resumen(p)}`, PLANTILLA_CLIENTE)
+  await enviarAviso(telefonoDe(p), `❌ Cita cancelada por el cliente. Bórrala de Booksy: ${resumen(p)}`, PLANTILLA_CLIENTE)
 }
 
 // Mensaje al cliente que también queda en su conversación con el bot.
@@ -76,7 +85,7 @@ export async function atenderEquipo(m: Entrante): Promise<void> {
       await cambiarEstado(p.id, 'confirmada')
       await decirAlCliente(
         p.cliente_telefono,
-        `✅ ¡Cita confirmada! ${p.servicio} con ${p.barbero} el ${hora} en ${barberia.nombre} (${barberia.direccion}). Si no puedes venir, escríbenos por aquí.`,
+        `✅ ¡Cita confirmada! ${p.servicio} con ${p.barbero} el ${hora} en ${barberia.nombre}${enLocal(p)} (${localDe(p.local)?.direccion ?? barberia.ciudad}). Si no puedes venir, escríbenos por aquí.`,
       )
       return enviarTexto(m.de, `Hecho. Se lo he confirmado a ${p.cliente_nombre}.`)
     }
@@ -126,7 +135,7 @@ export async function revisarPendientes(): Promise<{ recordadas: number; cliente
   for (const p of await pendientesSin('cliente_avisado', barberia.minutosAvisoCliente)) {
     await marcar(p.id, 'cliente_avisado')
     const llamar = barberia.telefono ? ` Si te corre prisa, llama al ${barberia.telefono}.` : ''
-    await decirAlCliente(p.cliente_telefono, `${p.barbero === 'el primero libre' ? 'El barbero' : p.barbero} aún no ha podido mirar tu cita. Te aviso en cuanto conteste.${llamar}`).then(
+    await decirAlCliente(p.cliente_telefono, `${p.barbero === CUALQUIERA ? 'El barbero' : p.barbero} aún no ha podido mirar tu cita. Te aviso en cuanto conteste.${llamar}`).then(
       () => clientes++,
       (e) => console.error('[aviso cliente]', p.id, e),
     )

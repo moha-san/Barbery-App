@@ -23,10 +23,9 @@ mock.module(aqui('../config/barberia.ts'), {
     barberia: {
       ...barberia,
       whatsappDueno: DUENO,
-      barberos: [
-        { nombre: 'Josiko', whatsapp: '' },
-        { nombre: 'Adrián', whatsapp: ADRIAN },
-      ],
+      locales: barberia.locales.map((l: { nombre: string }, i: number) =>
+        i === 0 ? { ...l, barberos: [{ nombre: 'Josiko', whatsapp: '' }, { nombre: 'Adrián', whatsapp: ADRIAN }] } : l,
+      ),
     },
   },
 })
@@ -88,9 +87,9 @@ function iaFalsa(body: { messages: { role: string; content: unknown }[] }) {
     if (r.startsWith('id ')) return herramienta('cancelar_cita', { id: Number(/^id (\d+)/.exec(r)![1]) })
     return texto(`Hecho 👍 (${r.split('.')[0]}). Te aviso por aquí.`)
   }
-  if (/cuánto|precio/i.test(textoUsuario)) return texto('El corte y barba son 20 €. ¿Quieres cita?')
-  if (/viernes/i.test(textoUsuario)) return herramienta('pedir_cita', { nombre: 'Juan', servicio: 'Corte y barba', barbero: 'Adrián', fecha: viernes, hora: '20:00' })
-  if (/vale/i.test(textoUsuario)) return herramienta('pedir_cita', { nombre: 'Juan', servicio: 'Corte y barba', barbero: 'Adrián', fecha: viernes, hora: '20:30' })
+  if (/cuánto|precio/i.test(textoUsuario)) return texto('El corte + barba completa son 15 €. ¿Quieres cita?')
+  if (/viernes/i.test(textoUsuario)) return herramienta('pedir_cita', { nombre: 'Juan', local: 'Centro', servicio: 'Corte + barba completa', barbero: 'Adrián', fecha: viernes, hora: '20:00' })
+  if (/vale/i.test(textoUsuario)) return herramienta('pedir_cita', { nombre: 'Juan', local: 'Centro', servicio: 'Corte + barba completa', barbero: 'Adrián', fecha: viernes, hora: '20:30' })
   if (/cancela/i.test(textoUsuario)) return herramienta('ver_mis_citas', {})
   return texto('¿En qué te ayudo?')
 }
@@ -145,7 +144,7 @@ async function llega(de: string, texto: string, boton?: string) {
 const ultimoA = (lista: Enviado[], to: string) => lista.filter((e) => e.to === to).at(-1)
 
 let r = await llega(CLIENTE, '¿Cuánto cuesta corte y barba?')
-assert.match(ultimoA(r, CLIENTE)!.texto, /20 €/)
+assert.match(ultimoA(r, CLIENTE)!.texto, /15 €/)
 
 r = await llega(CLIENTE, 'Quiero cita el viernes a las 8 con Adrián')
 assert.equal(ultimoA(r, ADRIAN)?.tipo, 'template', 'barbero fuera de las 24 h: plantilla')
@@ -197,6 +196,7 @@ assert.equal((await POST(new Request('http://x', { method: 'POST', body: cuerpo,
 
 // Cómo se llamó a la IA.
 assert.ok(peticionesIA.every((p) => p.fallbacks === 'default' && p.betas?.includes('server-side-fallback-2026-07-01')))
-assert.match(peticionesIA[0].system, /JK The Barber/)
+assert.match(peticionesIA[0].system, /Barbería Dradeb/)
+assert.match(peticionesIA[0].system, /San Ginés/)
 
 console.log('\n✅ Simulación correcta: dudas, cita, otra hora, confirmación, cancelación, repetidos y firma.')

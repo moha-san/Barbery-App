@@ -5,7 +5,7 @@ Proyecto aparte de la app de reservas. No usa nada de ella.
 ## Qué hace
 
 1. El cliente escribe al WhatsApp de la barbería: "¿cuánto cuesta el corte?" o "quiero cita el jueves a las 8 con Adrián".
-2. La IA contesta las dudas con los datos de `config/barberia.ts` y, para una cita, pregunta solo lo que falte (servicio, barbero, día, hora y nombre).
+2. La IA contesta las dudas con los datos de `config/barberia.ts` y, para una cita, pregunta solo lo que falte (local, servicio, barbero, día, hora y nombre).
 3. Al barbero le llega por WhatsApp: "📅 Nueva cita para pasar a Booksy: Juan, corte con Adrián, jueves a las 20:00", con tres botones:
    - **Hecho**: ya la ha apuntado en Booksy. El bot se lo confirma al cliente.
    - **Otra hora**: le salen dos botones con la hora 30 min y 1 h más tarde, o "Escribir otra". El bot se la ofrece al cliente.
@@ -30,7 +30,7 @@ supabase/bot.sql          Tablas: se pega en Supabase > SQL Editor
 
 ## Puesta en marcha (una vez por barbería)
 
-1. **Datos**: rellena `config/barberia.ts` (horario, precios, barberos y el WhatsApp personal de cada barbero, que es donde reciben las citas).
+1. **Datos**: rellena `config/barberia.ts`: un bloque por local (dirección, horario, precios, barberos y el WhatsApp de cada barbero, que es donde reciben las citas; las de "el primero libre" van al WhatsApp del encargado del local).
 2. **Base de datos**: crea un proyecto en Supabase y pega `supabase/bot.sql` en SQL Editor > Run.
 3. **WhatsApp**: en developers.facebook.com crea una app de tipo "Empresa", añade el producto WhatsApp y registra el número de la barbería. Apunta el token, el "Phone number ID" y el "App secret".
 4. **Plantillas** (WhatsApp Manager > Plantillas, categoría "Utilidad", idioma español). Sirven para escribir a alguien que lleva más de 24 h sin hablar con el bot:

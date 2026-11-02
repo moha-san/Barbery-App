@@ -22,6 +22,7 @@ create table if not exists public.peticiones (
   id bigint generated always as identity primary key,
   cliente_telefono text not null,
   cliente_nombre text not null,
+  local text not null default '',
   servicio text not null,
   barbero text not null,
   inicio timestamptz not null,
@@ -31,6 +32,7 @@ create table if not exists public.peticiones (
   cliente_avisado boolean not null default false, -- ya se le dijo al cliente que sigue pendiente
   created_at timestamptz not null default now()
 );
+alter table public.peticiones add column if not exists local text not null default '';
 alter table public.peticiones add column if not exists recordada boolean not null default false;
 alter table public.peticiones add column if not exists cliente_avisado boolean not null default false;
 create index if not exists peticiones_cliente_idx on public.peticiones (cliente_telefono, created_at desc);
