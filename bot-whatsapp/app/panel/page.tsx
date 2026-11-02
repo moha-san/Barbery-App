@@ -35,16 +35,19 @@ function Login({ error }: { error: boolean }) {
   )
 }
 
-export default async function Panel({ searchParams }: { searchParams: { error?: string } }) {
+export default async function Panel({ searchParams }: { searchParams: { error?: string; local?: string } }) {
   if (!cookieValida(cookies().get(COOKIE)?.value)) return <Login error={!!searchParams.error} />
 
   const zona = barberia.zonaHoraria
   const inicioMes = new Date()
   inicioMes.setDate(1)
   inicioMes.setHours(0, 0, 0, 0)
-  const [peticiones, charlas] = await Promise.all([peticionesDesde(inicioMes), conversaciones()])
-  const confirmadas = peticiones.filter((p) => p.estado === 'confirmada')
+  const [todas, charlas] = await Promise.all([peticionesDesde(inicioMes), conversaciones()])
   const varios = barberia.locales.length > 1
+  const local = barberia.locales.find((l) => l.nombre === searchParams.local)?.nombre
+  const peticiones = local ? todas.filter((p) => p.local === local) : todas
+  const confirmadas = peticiones.filter((p) => p.estado === 'confirmada')
+  const nombres = new Map(todas.map((p) => [p.cliente_telefono, p.cliente_nombre]))
 
   return (
     <main style={pagina}>
@@ -55,8 +58,22 @@ export default async function Panel({ searchParams }: { searchParams: { error?: 
         </form>
       </div>
 
+      {varios && (
+        <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          {[undefined, ...barberia.locales.map((l) => l.nombre)].map((n) => (
+            <Link
+              key={n ?? 'todos'}
+              href={n ? `/panel?local=${encodeURIComponent(n)}` : '/panel'}
+              style={{ ...enlace, padding: '6px 12px', borderRadius: 999, border: '1px solid #3a3546', background: n === local ? morado : 'transparent', color: n === local ? '#fff' : '#c9b6ff' }}
+            >
+              {n ?? 'Todos'}
+            </Link>
+          ))}
+        </nav>
+      )}
+
       <section style={caja}>
-        <h2 style={{ fontSize: 18, marginTop: 0 }}>Este mes</h2>
+        <h2 style={{ fontSize: 18, marginTop: 0 }}>Este mes{local ? ` en ${local}` : ''}</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, textAlign: 'center' }}>
           {[
             ['Citas pedidas', peticiones.length],
@@ -71,7 +88,7 @@ export default async function Panel({ searchParams }: { searchParams: { error?: 
         </div>
         {confirmadas.length > 0 && (
           <p style={{ ...suave, marginBottom: 0 }}>
-            {varios && <>Por local: {contar(confirmadas.map((p) => p.local)).map(([k, n]) => `${k} ${n}`).join(' · ')}<br /></>}
+            {varios && !local && <>Por local: {contar(confirmadas.map((p) => p.local)).map(([k, n]) => `${k} ${n}`).join(' · ')}<br /></>}
             Por barbero: {contar(confirmadas.map((p) => p.barbero)).map(([k, n]) => `${k} ${n}`).join(' · ')}
           </p>
         )}
@@ -94,7 +111,7 @@ export default async function Panel({ searchParams }: { searchParams: { error?: 
         {charlas.length === 0 && <p style={suave}>Aún no ha escrito nadie.</p>}
         {charlas.map((c) => (
           <Link key={c.telefono} href={`/panel/c/${c.telefono}`} style={{ ...enlace, display: 'block', padding: '8px 0', borderTop: '1px solid #2a2635' }}>
-            +{c.telefono}
+            {nombres.get(c.telefono) ? `${nombres.get(c.telefono)} · ` : ''}+{c.telefono}
             <div style={{ ...suave, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {c.rol === 'cliente' ? '' : 'Bot: '}
               {c.texto}

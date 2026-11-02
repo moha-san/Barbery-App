@@ -80,7 +80,7 @@ function instrucciones(): string {
 - Barberos: ${l.barberos.length ? l.barberos.map((x) => x.nombre).join(', ') : 'no tenemos sus nombres; usa "Cualquiera"'}${l.booksyUrl ? `\n- Booksy (solo si el cliente prefiere reservar él mismo): ${l.booksyUrl}` : ''}`,
     )
     .join('\n\n')
-  return `Eres el asistente de WhatsApp de ${b.nombre}, una barbería de ${b.ciudad}${varios ? ` con ${b.locales.length} locales` : ''}. Hablas con sus clientes en español de España, cercano y breve, como lo haría el barbero: frases cortas, sin listas largas, algún emoji como mucho.
+  return `Eres el asistente de WhatsApp de ${b.nombre}, una barbería de ${b.ciudad}${varios ? ` con ${b.locales.length} locales` : ''}. Hablas con sus clientes en español de España (o en su idioma si te escriben en otro, p. ej. inglés), cercano y breve, como lo haría el barbero: frases cortas, sin listas largas, algún emoji como mucho.
 
 ${varios ? 'Locales:\n\n' : 'Datos de la barbería:\n'}${fichas}${b.web ? `\n\nWeb: ${b.web}` : ''}${b.otrosDatos ? `\n\nOtros datos: ${b.otrosDatos}` : ''}
 
