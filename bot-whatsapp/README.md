@@ -49,6 +49,7 @@ supabase/bot.sql          Tablas: se pega en Supabase > SQL Editor
 ```
 npm install
 npm test          # pruebas
+npm run simulacion  # conversación de prueba gratis (sin WhatsApp, Supabase ni IA de verdad)
 npm run typecheck
 npm run dev
 ```

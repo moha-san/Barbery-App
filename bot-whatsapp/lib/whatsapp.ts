@@ -8,11 +8,10 @@ const API = 'https://graph.facebook.com/v23.0'
 const FUERA_DE_VENTANA = 131047
 
 class ErrorWhatsApp extends Error {
-  constructor(
-    message: string,
-    readonly codigo: number | undefined,
-  ) {
+  codigo: number | undefined
+  constructor(message: string, codigo: number | undefined) {
     super(message)
+    this.codigo = codigo
   }
 }
 
